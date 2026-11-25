@@ -33,12 +33,25 @@ export function shorten(text: string, max: number): string {
   return `${chars.slice(0, max - tail - 3).join('')} … ${chars.slice(-tail).join('')}`;
 }
 
-/** Text that renders literally in GitHub Markdown: no links, mentions or HTML. */
-export function markdown(text: string, max = 160): string {
+/** Text with no Markdown or HTML of its own. Use `code` or `prose`, which also stop mentions. */
+function markdown(text: string, max = 160): string {
   return clean(text, max)
     .replace(/[&<>\\`*_{}[\]()#+!|~@:]/g, (c) => `&#${c.charCodeAt(0)};`)
     .replace(/www\./gi, (m) => `${m.slice(0, 3)}&#46;`);
 }
+
+/**
+ * GitHub decodes entities before it looks for mentions, issues and commits, so
+ * escaping is not enough. It never looks inside `<code>`.
+ */
+export const code = (text: string, max = 160): string => `<code>${markdown(text, max)}</code>`;
+
+/** Plain text, unless GitHub could turn part of it into a link. */
+export const prose = (text: string, max = 160): string =>
+  /[@#]|GH-|[0-9a-f]{7}/i.test(text) ? code(text, max) : markdown(text, max);
+
+/** Annotations are plain text, where GitHub still links mentions. */
+export const annotation = (text: string, max = 300): string => clean(text, max).replace(/@(?=[^ ])/g, '@ ');
 
 /** JSON that is safe to print on a terminal: plain ASCII. */
 export function safeJson(value: unknown): string {

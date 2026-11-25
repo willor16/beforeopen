@@ -3,7 +3,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { renderMarkdown } from './report/markdown.ts';
 import { renderDiff } from './report/terminal.ts';
 import { bundledRules } from './rules.ts';
-import { clean, workflowData, workflowProperty } from './sanitize.ts';
+import { annotation, clean, workflowData, workflowProperty } from './sanitize.ts';
 import { compare, scan } from './scan.ts';
 import { LocalGit } from './tree/git.ts';
 import { SEVERITIES, rank, type Lang, type Severity } from './types.ts';
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
     for (const { point } of order.filter((c) => rank(c.point.severity) >= rank('medium')).slice(0, 10)) {
       const level = point.severity === 'high' ? 'error' : 'warning';
       const reason = point.signals[0] ? `. ${point.signals[0].title[lang]}` : '';
-      const message = clean(`${point.title[lang]}${reason}${point.command ? `: ${point.command}` : ''}`, 300);
+      const message = annotation(`${point.title[lang]}${reason}${point.command ? `: ${point.command}` : ''}`);
       process.stdout.write(`::${level} file=${workflowProperty(clean(point.file, 300))},line=${point.line},title=beforeopen::${workflowData(message)}\n`);
     }
 
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
 
     if (failOn !== 'never' && order[0] && rank(order[0].point.severity) >= rank(failOn as Severity)) process.exitCode = 1;
     else if (b.gaps.length > 0) {
-      process.stdout.write(`::error title=beforeopen::${workflowData(clean(b.gaps[0]![lang], 300))}\n`);
+      process.stdout.write(`::error title=beforeopen::${workflowData(annotation(b.gaps[0]![lang]))}\n`);
       process.exitCode = 1;
     }
   } finally {

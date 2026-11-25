@@ -1795,8 +1795,8 @@ var require_stringifyString = __commonJS({
             case "u":
               {
                 str2 += json.slice(start, i);
-                const code = json.substr(i + 2, 4);
-                switch (code) {
+                const code2 = json.substr(i + 2, 4);
+                switch (code2) {
                   case "0000":
                     str2 += "\\0";
                     break;
@@ -1822,8 +1822,8 @@ var require_stringifyString = __commonJS({
                     str2 += "\\P";
                     break;
                   default:
-                    if (code.substr(0, 2) === "00")
-                      str2 += "\\x" + code.substr(2);
+                    if (code2.substr(0, 2) === "00")
+                      str2 += "\\x" + code2.substr(2);
                     else
                       str2 += json.substr(i, 6);
                 }
@@ -4355,22 +4355,22 @@ var require_errors = __commonJS({
     "use strict";
     init_define_BEFOREOPEN_RULES();
     var YAMLError = class extends Error {
-      constructor(name, pos, code, message) {
+      constructor(name, pos, code2, message) {
         super();
         this.name = name;
-        this.code = code;
+        this.code = code2;
         this.message = message;
         this.pos = pos;
       }
     };
     var YAMLParseError = class extends YAMLError {
-      constructor(pos, code, message) {
-        super("YAMLParseError", pos, code, message);
+      constructor(pos, code2, message) {
+        super("YAMLParseError", pos, code2, message);
       }
     };
     var YAMLWarning = class extends YAMLError {
-      constructor(pos, code, message) {
-        super("YAMLWarning", pos, code, message);
+      constructor(pos, code2, message) {
+        super("YAMLWarning", pos, code2, message);
       }
     };
     var prettifyError = (src, lc) => (error) => {
@@ -5290,7 +5290,7 @@ var require_resolve_flow_scalar = __commonJS({
       const { offset, type, source, end } = scalar;
       let _type;
       let value2;
-      const _onError = (rel, code, msg) => onError(offset + rel, code, msg);
+      const _onError = (rel, code2, msg) => onError(offset + rel, code2, msg);
       switch (type) {
         case "scalar":
           _type = Scalar.Scalar.PLAIN;
@@ -5488,9 +5488,9 @@ var require_resolve_flow_scalar = __commonJS({
     function parseCharCode(source, offset, length, onError) {
       const cc = source.substr(offset, length);
       const ok = cc.length === length && /^[0-9a-fA-F]+$/.test(cc);
-      const code = ok ? parseInt(cc, 16) : NaN;
+      const code2 = ok ? parseInt(cc, 16) : NaN;
       try {
-        return String.fromCodePoint(code);
+        return String.fromCodePoint(code2);
       } catch {
         const raw = source.substr(offset - 2, length + 2);
         onError(offset - 2, "BAD_DQ_ESCAPE", `Invalid escape sequence ${raw}`);
@@ -5817,12 +5817,12 @@ var require_composer = __commonJS({
         this.prelude = [];
         this.errors = [];
         this.warnings = [];
-        this.onError = (source, code, message, warning) => {
+        this.onError = (source, code2, message, warning) => {
           const pos = getErrorPos(source);
           if (warning)
-            this.warnings.push(new errors.YAMLWarning(pos, code, message));
+            this.warnings.push(new errors.YAMLWarning(pos, code2, message));
           else
-            this.errors.push(new errors.YAMLParseError(pos, code, message));
+            this.errors.push(new errors.YAMLParseError(pos, code2, message));
         };
         this.directives = new directives.Directives({ version: options.version || "1.2" });
         this.options = options;
@@ -5985,12 +5985,12 @@ var require_cst_scalar = __commonJS({
     var stringifyString = require_stringifyString();
     function resolveAsScalar(token, strict = true, onError) {
       if (token) {
-        const _onError = (pos, code, message) => {
+        const _onError = (pos, code2, message) => {
           const offset = typeof pos === "number" ? pos : Array.isArray(pos) ? pos[0] : pos.offset;
           if (onError)
-            onError(offset, code, message);
+            onError(offset, code2, message);
           else
-            throw new errors.YAMLParseError([offset, offset + 1], code, message);
+            throw new errors.YAMLParseError([offset, offset + 1], code2, message);
         };
         switch (token.type) {
           case "scalar":
@@ -8112,6 +8112,9 @@ function shorten(text, max) {
 function markdown(text, max = 160) {
   return clean(text, max).replace(/[&<>\\`*_{}[\]()#+!|~@:]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/www\./gi, (m) => `${m.slice(0, 3)}&#46;`);
 }
+var code = (text, max = 160) => `<code>${markdown(text, max)}</code>`;
+var prose = (text, max = 160) => /[@#]|GH-|[0-9a-f]{7}/i.test(text) ? code(text, max) : markdown(text, max);
+var annotation = (text, max = 300) => clean(text, max).replace(/@(?=[^ ])/g, "@ ");
 var workflowData = (s) => s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 var workflowProperty = (s) => workflowData(s).replace(/:/g, "%3A").replace(/,/g, "%2C");
 
@@ -8125,7 +8128,7 @@ var TRIGGERS = ["editor", "agent", "shell", "git", "container", "install", "buil
 // src/report/terminal.ts
 init_define_BEFOREOPEN_RULES();
 var CODES = { high: "1;31", medium: "33", low: "36", info: "90" };
-var painter = (on) => (code, text) => on ? `\x1B[${code}m${text}\x1B[0m` : text;
+var painter = (on) => (code2, text) => on ? `\x1B[${code2}m${text}\x1B[0m` : text;
 function countBySeverity(points, lang) {
   return [...SEVERITIES].reverse().map((s) => ({ s, n: points.filter((p) => p.severity === s).length })).filter((x) => x.n > 0).map((x) => `${x.n} ${SEVERITY_TEXT[x.s][lang].toLowerCase()}${lang === "es" && x.n > 1 && x.s !== "info" ? "s" : ""}`).join(", ");
 }
@@ -8189,28 +8192,28 @@ function renderDiff(title, changes, gaps, o) {
 // src/report/markdown.ts
 var MAX_ROWS = 50;
 function renderMarkdown(title, rows, gaps, lang) {
-  const out = [`### beforeopen: ${markdown(title, 120)}`, ""];
+  const out = [`### beforeopen: ${prose(title, 120)}`, ""];
   if (rows.length === 0) {
-    out.push(t(lang, rows.length === 0 ? "noNew" : "nothing"));
+    out.push(t(lang, "noNew"));
   } else {
     out.push(t(lang, "diffSummary", { n: rows.length, detail: countBySeverity(rows.map((r) => r.point), lang) }), "");
     out.push(`| ${t(lang, "severity")} | ${t(lang, "when")} | ${t(lang, "where")} | ${t(lang, "what")} |`, "| --- | --- | --- | --- |");
     const sorted = [...rows].sort((a, b) => rank(b.point.severity) - rank(a.point.severity));
     for (const { point, change } of sorted.slice(0, MAX_ROWS)) {
-      const reasons = point.signals.filter((s) => rank(s.severity) >= rank("medium")).slice(0, 3).map((s) => `<br>**${s.title[lang]}** (${markdown(`${s.file}:${s.line}`, 100)})`);
+      const reasons = point.signals.filter((s) => rank(s.severity) >= rank("medium")).slice(0, 3).map((s) => `<br>**${s.title[lang]}** (${code(`${s.file}:${s.line}`, 100)})`);
       out.push([
         "",
         `${SEVERITY_TEXT[point.severity][lang]}${change ? `<br>${t(lang, change.kind)}` : ""}`,
         TRIGGER_TEXT[point.trigger][lang],
-        markdown(`${point.file}:${point.line}`, 120),
-        `${markdown(point.title[lang], 120)}${point.command ? `<br>${markdown(point.command, 200)}` : ""}${reasons.join("")}`,
+        code(`${point.file}:${point.line}`, 120),
+        `${prose(point.title[lang], 120)}${point.command ? `<br>${code(point.command, 200)}` : ""}${reasons.join("")}`,
         ""
       ].join(" | ").trim());
     }
     if (rows.length > MAX_ROWS) out.push("", t(lang, "omitted", { n: rows.length - MAX_ROWS }));
   }
   if (gaps.length > 0) {
-    out.push("", `**${t(lang, "incomplete")}**`, "", ...gaps.slice(0, 10).map((g) => `- ${markdown(g[lang])}`));
+    out.push("", `**${t(lang, "incomplete")}**`, "", ...gaps.slice(0, 10).map((g) => `- ${prose(g[lang])}`));
   }
   out.push("", t(lang, "disclaimer"));
   return `${out.join("\n")}
@@ -8390,19 +8393,19 @@ function createScanner(text, ignoreTrivia = false) {
       tokenOffset = len;
       return token = 17;
     }
-    let code = text.charCodeAt(pos);
-    if (isWhiteSpace(code)) {
+    let code2 = text.charCodeAt(pos);
+    if (isWhiteSpace(code2)) {
       do {
         pos++;
-        value2 += String.fromCharCode(code);
-        code = text.charCodeAt(pos);
-      } while (isWhiteSpace(code));
+        value2 += String.fromCharCode(code2);
+        code2 = text.charCodeAt(pos);
+      } while (isWhiteSpace(code2));
       return token = 15;
     }
-    if (isLineBreak(code)) {
+    if (isLineBreak(code2)) {
       pos++;
-      value2 += String.fromCharCode(code);
-      if (code === 13 && text.charCodeAt(pos) === 10) {
+      value2 += String.fromCharCode(code2);
+      if (code2 === 13 && text.charCodeAt(pos) === 10) {
         pos++;
         value2 += "\n";
       }
@@ -8410,7 +8413,7 @@ function createScanner(text, ignoreTrivia = false) {
       tokenLineStartOffset = pos;
       return token = 14;
     }
-    switch (code) {
+    switch (code2) {
       // tokens: []{}:,
       case 123:
         pos++;
@@ -8476,12 +8479,12 @@ function createScanner(text, ignoreTrivia = false) {
           value2 = text.substring(start, pos);
           return token = 13;
         }
-        value2 += String.fromCharCode(code);
+        value2 += String.fromCharCode(code2);
         pos++;
         return token = 16;
       // numbers
       case 45:
-        value2 += String.fromCharCode(code);
+        value2 += String.fromCharCode(code2);
         pos++;
         if (pos === len || !isDigit(text.charCodeAt(pos))) {
           return token = 16;
@@ -8503,9 +8506,9 @@ function createScanner(text, ignoreTrivia = false) {
         return token = 11;
       // literals and unknown symbols
       default:
-        while (pos < len && isUnknownContentCharacter(code)) {
+        while (pos < len && isUnknownContentCharacter(code2)) {
           pos++;
-          code = text.charCodeAt(pos);
+          code2 = text.charCodeAt(pos);
         }
         if (tokenOffset !== pos) {
           value2 = text.substring(tokenOffset, pos);
@@ -8519,16 +8522,16 @@ function createScanner(text, ignoreTrivia = false) {
           }
           return token = 16;
         }
-        value2 += String.fromCharCode(code);
+        value2 += String.fromCharCode(code2);
         pos++;
         return token = 16;
     }
   }
-  function isUnknownContentCharacter(code) {
-    if (isWhiteSpace(code) || isLineBreak(code)) {
+  function isUnknownContentCharacter(code2) {
+    if (isWhiteSpace(code2) || isLineBreak(code2)) {
       return false;
     }
-    switch (code) {
+    switch (code2) {
       case 125:
       case 93:
       case 123:
@@ -10813,9 +10816,9 @@ function run(cwd, args, network = false) {
     child.stdout.on("data", (c) => out.push(c));
     child.stderr.on("data", (c) => err.push(c));
     child.on("error", (e) => fail(new GitError(e.message)));
-    child.on("close", (code) => {
+    child.on("close", (code2) => {
       if (child.killed) fail(new GitError("The download took more than 10 minutes and was stopped."));
-      else if (code === 0) done(Buffer.concat(out));
+      else if (code2 === 0) done(Buffer.concat(out));
       else fail(new GitError(redact(Buffer.concat(err).toString("utf8").trim()) || `git ${args[0]} failed`));
     });
   });
@@ -11063,7 +11066,7 @@ async function main() {
     for (const { point } of order.filter((c) => rank(c.point.severity) >= rank("medium")).slice(0, 10)) {
       const level = point.severity === "high" ? "error" : "warning";
       const reason = point.signals[0] ? `. ${point.signals[0].title[lang]}` : "";
-      const message = clean(`${point.title[lang]}${reason}${point.command ? `: ${point.command}` : ""}`, 300);
+      const message = annotation(`${point.title[lang]}${reason}${point.command ? `: ${point.command}` : ""}`);
       process.stdout.write(`::${level} file=${workflowProperty(clean(point.file, 300))},line=${point.line},title=beforeopen::${workflowData(message)}
 `);
     }
@@ -11076,7 +11079,7 @@ highest=${highest}
 `);
     if (failOn !== "never" && order[0] && rank(order[0].point.severity) >= rank(failOn)) process.exitCode = 1;
     else if (b.gaps.length > 0) {
-      process.stdout.write(`::error title=beforeopen::${workflowData(clean(b.gaps[0][lang], 300))}
+      process.stdout.write(`::error title=beforeopen::${workflowData(annotation(b.gaps[0][lang]))}
 `);
       process.exitCode = 1;
     }
