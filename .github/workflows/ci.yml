@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: node scripts/escape-invisible.mjs --check
+      - run: npm run check
+      - name: The committed Action matches the source
+        if: runner.os == 'Linux'
+        run: git diff --exit-code -- dist/action.js THIRD-PARTY-NOTICES.md
+      - name: The packaged CLI works on the oldest supported Node
+        if: runner.os == 'Linux'
+        run: npx --yes node@20 dist/cli.js . --fail-on low
+  dogfood:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./

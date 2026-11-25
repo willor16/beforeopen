@@ -1,0 +1,284 @@
+# Evidence that raises the severity of an execution point.
+#
+# severity   One value, or one per context:
+#              command       the command written in the configuration
+#              script        a file of the repository that the command runs
+#              instructions  text that an AI agent reads as orders
+# patterns   JavaScript regular expressions (flags: i, u, g). Any of them is enough.
+# unless     Only for instructions: lowers the finding to info when it matches nearby.
+#            It never applies to commands or scripts, where it could be abused.
+# flags      Replaces the default "i".
+#
+# Keep patterns linear: no nested quantifiers and always a limit such as {0,200}.
+
+signals:
+  - id: download-and-run
+    title:
+      en: Downloads a program and runs it
+      es: Descarga un programa y lo ejecuta
+    severity: { command: high, script: high, instructions: low }
+    patterns:
+      - '\b(?:curl|wget)(?:\.exe)?[ \t]+[^\n|;]{1,400}\|\s*(?:sudo\s+(?:-\w+\s+)?)?(?:/(?:usr/)?bin/)?(?:env\s+)?(?:ba|z|da|k)?sh\b'
+      - '\b(?:curl|wget)(?:\.exe)?[ \t]+[^\n|;]{1,400}\|\s*(?:sudo\s+)?(?:node|bun|deno|python[\d.]*|perl|ruby|php|cmd|powershell|pwsh)\b'
+      - '(?:\b(?:ba|z)?sh|\bsource|\beval|(?:^|\s)\.)\s+(?:-c\s+)?["'']?(?:<\(|\$\(|`)\s*(?:curl|wget)\b'
+      - '\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod|DownloadString|DownloadData)\b[^\n]{0,400}\|\s*(?:iex|Invoke-Expression)\b'
+      - '\b(?:iex|Invoke-Expression)\b[^\n]{0,200}\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod|DownloadString|Net\.WebClient)\b'
+      - '\bmshta(?:\.exe)?\s+["'']?https?:'
+      - '\bcertutil(?:\.exe)?\b[^\n]{0,60}-urlcache\b'
+      - '\bbitsadmin(?:\.exe)?\b[^\n]{0,60}/transfer\b'
+      - '\bregsvr32(?:\.exe)?\b[^\n]{0,60}/i:https?:'
+      - '\bmsiexec(?:\.exe)?\b[^\n]{0,60}https?:'
+      - '\b(?:curl|wget)(?:\.exe)?\b[^\n]{0,300}(?:&&|;)\s*(?:chmod\s+\+?[\w,+]{1,6}\s+[^\n]{1,120}(?:&&|;)\s*)?(?:sudo\s+)?(?:\./|/tmp/|(?:ba|z)?sh\s|node\s|python[\d.]*\s|start\s|cmd\s)'
+      - '\b(?:npx|bunx|npm\s+(?:i|install|exec)|pnpm\s+dlx|pip[\d.]*\s+install)\b[^\n]{0,60}\s(?<!(?:--registry|--(?:extra-)?index-url|-i|--find-links|--proxy)\s)(?:git\+)?https?://(?!github\.com/|gitlab\.com/|registry\.npmjs\.org/|pypi\.org/|files\.pythonhosted\.org/|download\.pytorch\.org/)'
+
+  - id: network-download
+    title:
+      en: Uses the network directly
+      es: Usa la red directamente
+    severity: { command: medium, script: low }
+    patterns:
+      - '(?:^|[\s;&|(`"''])(?:curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod|ncat?|netcat)(?:\.exe)?\s+[^\n]{0,200}https?://(?!localhost\b|127\.0\.0\.1\b|0\.0\.0\.0\b|\[::1\])'
+
+  - id: reads-credentials
+    title:
+      en: Touches keys, passwords or wallets
+      es: Toca claves, contraseñas o monederos
+    severity: { command: high, script: high, instructions: low }
+    patterns:
+      - '(?:~|\$\{?HOME\}?|%USERPROFILE%|\$env:USERPROFILE|homedir\(\)|expanduser|Path\.home\(\))[^\n]{0,60}\.(?:ssh|aws|gnupg|kube|netrc|git-credentials|pgpass)\b'
+      - '\bid_(?:rsa|ed25519|ecdsa|dsa)\b(?!\.pub)'
+      - '\.aws[\\/]+credentials\b'
+      - '\.docker[\\/]+config\.json\b'
+      - '\.config[\\/]+(?:gh[\\/]+hosts\.yml|gcloud[\\/]+(?:credentials|application_default))'
+      - '\b(?:wallet\.dat|MetaMask|nkbihfbeogaeaoehlefnkodbefgpgknn|Exodus[\\/]exodus\.wallet)\b'
+      - '\b(?:Chrome|Chromium|Brave-Browser|Edge)[\\/][^\n]{0,60}(?:Login Data|Local State|Cookies)\b'
+      - '\bsecurity\s+(?:find-generic-password|find-internet-password|dump-keychain)\b'
+      - 'Library[\\/]+Keychains\b'
+      - '\.claude[\\/]+\.credentials\.json'
+      - '/proc/(?:self|\d+)/environ\b'
+
+  - id: sends-environment
+    title:
+      en: Collects or sends your environment variables
+      es: Recoge o envía tus variables de entorno
+    severity: high
+    patterns:
+      - 'JSON\.stringify\(\s*\{?\s*(?:\.\.\.)?process\.env\s*\}?\s*[,)]'
+      - '(?:^|[\s;&|(`])(?:env|printenv|set|export\s+-p)\s*\|\s*(?:curl|wget|nc|base64|xxd|gzip)\b'
+      - '\b(?:curl|wget)\b[^\n]{0,200}(?:-d|--data(?:-\w+)?|-F|--post-data)[ =]["'']?@?\$\(\s*(?:env|printenv)\b'
+      - 'json\.dumps\(\s*(?:dict\(\s*)?os\.environ'
+
+  - id: encoded-command
+    title:
+      en: Runs encoded or encrypted code
+      es: Ejecuta código codificado o cifrado
+    severity: { command: high, script: high, instructions: medium }
+    patterns:
+      - '\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,200}\s-e(?:nc(?:odedcommand)?|c)?\s+["'']?[A-Za-z0-9+/=]{24,}'
+      - '\bbase64\s+(?:-d|-D|--decode)\b[^\n]{0,80}\|\s*(?:sudo\s+)?(?:(?:ba|z|da)?sh|node|python[\d.]*|perl|ruby)\b'
+      - '\beval\s*\(\s*(?:atob|Buffer\.from|decodeURIComponent|unescape|String\.fromCharCode)\s*\('
+      - '\b(?:new\s+)?Function\s*\(\s*(?:["'']require["'']\s*,\s*)?(?:atob|Buffer\.from)\s*\('
+      - '\bexec\s*\(\s*(?:__import__\(["'']\w{2,10}["'']\)|base64|zlib|marshal|codecs|bytes\.fromhex|compile)\b'
+      - '\bFromBase64String\b[^\n]{0,200}\b(?:iex|Invoke-Expression|Assembly\]::Load)\b'
+      - '\bxxd\s+-r\b[^\n]{0,80}\|\s*(?:ba|z)?sh\b'
+
+  - id: obfuscated-code
+    title:
+      en: Deliberately unreadable code
+      es: Código ilegible a propósito
+    severity: high
+    patterns:
+      - '(?:\b_0x[a-f0-9]{4,6}\b[^\n]{0,120}?){4}'
+      - '(?:\\x[2-7][0-9a-f]){40}'
+      - '(?:String\.fromCharCode\([^)\n]{0,40}\)[^\n]{0,10}\+){4}'
+      - '\bglobal\s*\[\s*["'']!["'']\s*\]\s*='
+
+  - id: hidden-by-spaces
+    title:
+      en: Text pushed out of sight with spaces
+      es: Texto escondido detrás de muchos espacios
+    severity: { command: high, script: high, instructions: medium }
+    patterns:
+      - '\S[ \t\u{a0}\u{3000}]{150,}(?:[^\s|#/*\\-]|/[^/*\s])'
+
+  - id: hidden-characters
+    title:
+      en: Invisible or direction-changing characters
+      es: Caracteres invisibles o que cambian la dirección del texto
+    severity: high
+    flags: ''
+    patterns:
+      - '[\u{202a}-\u{202e}\u{2066}-\u{2069}]'
+      - '(?<!\u{1f3f4}[\u{e0020}-\u{e007f}]{0,10})[\u{e0000}-\u{e007f}]'
+      - '[\u{fe00}-\u{fe0e}\u{e0100}-\u{e01ef}]{4,}'
+      - '(?:[\u{200b}\u{200c}\u{2060}-\u{2064}]){4,}'
+
+  - id: odd-interpreter-target
+    title:
+      en: Runs a file that should not be a program
+      es: Ejecuta un archivo que no debería ser un programa
+    severity: { command: high, script: medium }
+    patterns:
+      - '\b(?:node|bun|deno[ \t]+run|python[\d.]*|perl|ruby|php|(?:ba|z|da)?sh)(?:\.exe)?[ \t]+(?:-[\w-]+[ \t]+)*["'']?[^\s"''|;&<>]{0,200}[\w)-]\.(?:woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|bmp|css|map|txt|md|dat|bin|pdf|mp[34]|log|csv)(?=["''`\s;&|)]|$)'
+
+  - id: suspicious-address
+    title:
+      en: Contacts an address typical of data theft
+      es: Contacta una dirección típica del robo de datos
+    severity: { command: high, script: high, instructions: medium }
+    patterns:
+      - '\b(?:webhook\.site|requestbin\.(?:com|net)|[\w-]{1,60}\.ngrok(?:-free)?\.(?:io|app|dev)|[\w-]{1,60}\.trycloudflare\.com|interact\.sh|oast\.(?:pro|live|fun|site)|burpcollaborator\.net|pipedream\.net)\b'
+      - 'discord(?:app)?\.com/api/webhooks/'
+      - 'api\.telegram\.org/bot'
+      - '\b(?:pastebin\.com/raw|paste\.rs|transfer\.sh|0x0\.st|termbin\.com|temp\.sh|jsonkeeper\.com|jsonsilo\.com|npoint\.io)\b'
+      - '\b[a-z2-7]{56}\.onion\b'
+
+  - id: numeric-address
+    title:
+      en: Contacts a server by its number, without a name
+      es: Contacta un servidor por su número, sin nombre
+    severity: { command: high, script: medium, instructions: low }
+    patterns:
+      - 'https?://(?!127\.|1\.1\.1\.1\b|1\.2\.3\.4\b|8\.8\.8\.8\b|192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|192\.88\.99\.|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|0\.0\.0\.0|169\.254\.)\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
+
+  - id: blockchain-payload
+    title:
+      en: Fetches code or orders from a blockchain
+      es: Obtiene código u órdenes desde una blockchain
+    severity: high
+    patterns:
+      - '\beth_getTransactionByHash\b|\beth_getTransactionReceipt\b'
+      - '\b(?:bsc-dataseed\d{0,2}\.(?:binance|bnbchain)\.org|api\.trongrid\.io|fullnode\.mainnet\.aptoslabs\.com|bsc-rpc\.publicnode\.com)\b'
+
+  - id: reverse-shell
+    title:
+      en: Opens remote control of your machine
+      es: Abre el control remoto de tu equipo
+    severity: high
+    patterns:
+      - '/dev/(?:tcp|udp)/[\w.$%{-]{1,80}/'
+      - '\bnc(?:at)?(?:\.exe)?\s[^\n]{0,60}-\w*[ec]\w*\s+(?:/bin/)?(?:ba|z)?sh\b'
+      - '\bsocket\.socket\b[^\n]{0,200}\bos\.dup2\b'
+      - 'New-Object\s+System\.Net\.Sockets\.TCPClient'
+
+  - id: persistence
+    title:
+      en: Installs itself to start again later
+      es: Se instala para volver a ejecutarse
+    severity: { command: high, script: high, instructions: low }
+    patterns:
+      - '\bcrontab\s+(?:-(?!l\b|r\b)|[\w/.])'
+      - '\bschtasks(?:\.exe)?\s[^\n]{0,40}/create\b|Register-ScheduledTask\b'
+      - '\blaunchctl\s+(?:load|bootstrap|submit)\b|Library[\\/]+Launch(?:Agents|Daemons)\b'
+      - '\\CurrentVersion\\Run(?:Once)?\b'
+      - '\bStart Menu[\\/]+Programs[\\/]+Startup\b'
+      - '\.ssh[\\/]+authorized_keys\b'
+
+  - id: shell-profile
+    title:
+      en: Changes what your terminal runs on start
+      es: Cambia lo que ejecuta tu terminal al iniciar
+    severity: { command: high, script: medium }
+    patterns:
+      - '>>?\s*["'']?(?:~|\$\{?HOME\}?)/\.(?:bashrc|zshrc|profile|bash_profile|zprofile|zshenv)\b'
+
+  - id: hides-itself
+    title:
+      en: Hides its window or its output
+      es: Oculta su ventana o su salida
+    severity: { command: medium, script: low }
+    patterns:
+      - '-W(?:indowStyle)?\s+(?:hidden|1)\b'
+      - '\bnohup\b|\bdisown\b|\bsetsid\b'
+      - '>\s*/dev/null\s+2>&1\s*&(?!&)'
+      - '>\s*nul\s+2>&1'
+      - '\bwindowsHide\s*:\s*true[^\n]{0,80}\bdetached\s*:\s*true|\bdetached\s*:\s*true[^\n]{0,80}\bstdio\s*:\s*["'']ignore'
+      - '\bstart\s+/(?:b|min)\b'
+
+  - id: disables-protection
+    title:
+      en: Turns off a protection
+      es: Desactiva una protección
+    severity: { command: high, script: high, instructions: low }
+    patterns:
+      - '--dangerously-skip-permissions|--dangerously-bypass-approvals-and-sandbox|--allow-dangerously-skip-permissions'
+      - '(?:gemini|qwen|codex|claude|cursor-agent|copilot|opencode)\b[^\n]{0,80}\s--(?:yolo|full-auto|allow-all-tools|force)\b'
+      - '\bxattr\s[^\n]{0,30}com\.apple\.quarantine|\bspctl\s+--(?:master|global)-disable'
+      - '\b(?:Set|Add)-MpPreference\b|\bnetsh\s+advfirewall\s[^\n]{0,60}\boff\b'
+      - '\bsetenforce\s+0\b|\bcsrutil\s+disable\b'
+      - '\bNODE_TLS_REJECT_UNAUTHORIZED\s*[=:]\s*["'']?0'
+
+  - id: bypasses-execution-policy
+    title:
+      en: Skips the PowerShell execution policy
+      es: Se salta la política de ejecución de PowerShell
+    severity: { command: low }
+    patterns:
+      - '-(?:ep|ex|exec|ExecutionPolicy)\s+(?:bypass|unrestricted)\b'
+
+  - id: inline-code
+    title:
+      en: Code written inside the command
+      es: Código escrito dentro del propio comando
+    severity: { command: low }
+    patterns:
+      - '\b(?:node|bun|deno)(?:\.exe)?\s+(?:eval|-e|-p|--eval|--print)\s'
+      - '\b(?:python[\d.]*|py|perl|ruby|php)(?:\.exe)?\s+-(?:c|e|r)\s'
+
+  - id: dynamic-code
+    title:
+      en: Builds code while it runs
+      es: Construye código mientras se ejecuta
+    severity: { command: medium, script: low }
+    patterns:
+      - '(?<![\w.$])eval\s*\((?!\s*\))'
+      - '\bnew\s+Function\s*\('
+      - '\bFunction\s*\.\s*constructor\b|\bconstructor\s*\.\s*constructor\b'
+
+  - id: starts-programs
+    title:
+      en: Starts other programs
+      es: Inicia otros programas
+    severity: { script: low }
+    patterns:
+      - '(?:require\(|from\s+)["''](?:node:)?child_process["'']'
+      - '\bimport\s+subprocess\b|\bos\.system\s*\('
+
+  - id: unpinned-remote-package
+    title:
+      en: Runs whatever version of a package is published
+      es: Ejecuta la versión del paquete que esté publicada
+    severity: { command: low }
+    patterns:
+      - '\b(?:npx|bunx)\s+(?:(?:-y|--yes|-q|--quiet)\s+)*(?!-)(?:@[\w.-]+/)?[\w.-]+(?:@(?:latest|next|\^|~)[\w.]*)?(?=\s|$|["''])'
+      - '\b(?:pnpm|yarn)\s+dlx\s+(?:@[\w.-]+/)?[\w.-]+(?:@(?:latest|next))?(?=\s|$|["''])'
+      - '\buvx\s+(?!-)[\w.-]+(?:@latest)?(?=\s|$|["''])'
+
+  - id: hides-from-user
+    title:
+      en: Asks the agent to hide something from you
+      es: Pide al agente que te oculte algo
+    severity: { instructions: medium, script: medium }
+    patterns:
+      - '\b(?:do not|don''t|never|without)\s+(?:tell|telling|inform|informing|notify|notifying|alert|alerting|reveal(?:ing)?\s+(?:this\s+)?to|show(?:ing)?\s+(?:this\s+)?to|mention(?:ing)?\s+(?:this|it)\s+to)\s+(?:this\s+)?(?:to\s+)?(?:the\s+)?(?:user|developer|human)\b(?!\s+(?:to|that)\b)'
+      - '\bkeep\s+(?:this|it)\s+(?:a\s+)?(?:secret|hidden)\s+from\s+the\s+(?:user|developer|human)\b'
+      - '\bno\s+(?:le\s+)?(?:digas|informes|menciones|avises|muestres)\s+(?:esto\s+)?(?:al|a la)\s+(?:usuario|usuaria|persona|desarrollador)'
+
+  - id: overrides-instructions
+    title:
+      en: Tries to cancel the rules of the agent
+      es: Intenta anular las reglas del agente
+    severity: { instructions: medium }
+    patterns:
+      - '\b(?:ignore|disregard|forget)\s+(?:all\s+)?(?:of\s+)?(?:the\s+|your\s+)?(?:previous|prior|above|earlier|system)\s+(?:instructions|prompts?|rules|messages)\b'
+      - '\b(?:ignora|olvida)\s+(?:todas\s+)?(?:las\s+|tus\s+)?instrucciones\s+(?:anteriores|previas)\b'
+    unless:
+      - 'prompt[ -]injection|\battacks?\b|\bjailbreak|\be\.g\.|\bexample\b|\bejemplo\b|["''`“]\s*(?:ignore|disregard|forget|ignora|olvida)'
+
+  - id: order-in-comment
+    title:
+      en: Orders inside a comment that people do not see
+      es: Órdenes dentro de un comentario que las personas no ven
+    severity: { instructions: medium }
+    patterns:
+      - '<!--(?:(?!-->)[\s\S]){0,600}?\b(?:(?:run|execute|ejecuta)\s+(?:the\s+following|this|el\s+siguiente|este|`)|(?:curl|wget|npx|npm\s+i(?:nstall)?|pip\s+install|bash|powershell)\s+[\w./-])'

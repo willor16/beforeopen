@@ -1,0 +1,299 @@
+# Places where a repository can make code run. No programming needed.
+#
+# trigger   editor | agent | shell | git | container | install | build
+# severity  info | low | medium | high, before looking at what it runs
+# files     Globs in lower case. `**/` means any folder.
+# exclude   Globs to ignore.
+# match     Optional regular expression (flags g, i, m, u). One point per match. The
+#           command is the group named "command", the first group or the match.
+# sibling   Optional file that must exist in the same folder.
+# script    Whether the file is read as a script. By default, only without `match`.
+
+points:
+  # --- Terminal ---------------------------------------------------------------
+  - id: shell/envrc
+    trigger: shell
+    severity: low
+    title: { en: direnv script, es: Script de direnv }
+    needs: { en: 'you run "direnv allow"', es: 'que ejecutes «direnv allow»' }
+    files: ['**/.envrc']
+
+  - id: shell/mise
+    trigger: shell
+    severity: low
+    title: { en: mise hook or command, es: Hook o comando de mise }
+    needs: { en: 'you run "mise trust"', es: 'que ejecutes «mise trust»' }
+    files: ['**/mise.toml', '**/.mise.toml', '**/mise.local.toml', '**/.config/mise/config.toml', '**/.config/mise.toml']
+    match: '^[ \t]*(?:enter|leave|cd|preinstall|postinstall|_\.source|_\.file)[ \t]*=[ \t]*(?<command>[^\n]+)$|exec\(command=(?<exec>[^\n]+)$'
+
+  - id: shell/autoenv
+    trigger: shell
+    severity: low
+    title: { en: Script that autoenv loads on entry, es: Script que autoenv carga al entrar }
+    needs: { en: you use autoenv and authorize it, es: que uses autoenv y lo autorices }
+    files: ['**/.autoenv.zsh', '**/.autoenv', '**/.in']
+
+  # --- Editors ----------------------------------------------------------------
+  - id: editor/jetbrains-startup
+    trigger: editor
+    severity: medium
+    title: { en: JetBrains task on project start, es: Tarea de JetBrains al iniciar el proyecto }
+    needs: { en: you trust the project, es: que confíes en el proyecto }
+    files: ['**/.idea/startup.xml']
+    match: '<configuration\s[^>\n]{0,200}\bname="(?<command>[^"\n]{1,200})"'
+
+  - id: editor/jetbrains-watcher
+    trigger: editor
+    severity: medium
+    title: { en: JetBrains file watcher, es: Vigilante de archivos de JetBrains }
+    needs: { en: you trust the project, es: que confíes en el proyecto }
+    files: ['**/.idea/watchertasks.xml']
+    match: '<option\s+name="(?:program|arguments)"\s+value="(?<command>[^"\n]{1,400})"'
+
+  - id: editor/vim
+    trigger: editor
+    severity: low
+    title: { en: Vim configuration of the project, es: Configuración de Vim del proyecto }
+    needs: { en: 'your Vim has "exrc" enabled or you trust the file', es: 'que tu Vim tenga «exrc» o que confíes en el archivo' }
+    files: ['**/.exrc', '**/.nvimrc', '**/.nvim.lua', '**/.vimrc', '**/.lvimrc', '**/.local.vimrc']
+
+  - id: editor/emacs
+    trigger: editor
+    severity: low
+    title: { en: Emacs variables that evaluate code, es: Variables de Emacs que evalúan código }
+    needs: { en: you accept the local variables, es: que aceptes las variables locales }
+    files: ['**/.dir-locals.el', '**/.dir-locals-2.el']
+    match: '\(\s*eval\s*\.\s*(?<command>[^\n]{1,400})'
+
+  - id: editor/msbuild
+    trigger: editor
+    severity: low
+    title: { en: MSBuild step that starts a program, es: Paso de MSBuild que inicia un programa }
+    needs: { en: you open or build the project in Visual Studio, es: que abras o compiles el proyecto en Visual Studio }
+    files: ['**/directory.build.{props,targets}', '**/*.{csproj,vbproj,fsproj,vcxproj,targets,props,user}']
+    match: '<Exec\s[^>]{0,300}?\bCommand="(?<command>[^"]{1,800})"|<(?:Pre|Post)BuildEvent>(?<event>[^<]{1,800})<'
+
+  - id: editor/debugger-init
+    trigger: editor
+    severity: low
+    title: { en: Debugger start file, es: Archivo de inicio del depurador }
+    needs: { en: you start the debugger in this folder, es: que inicies el depurador en esta carpeta }
+    files: ['**/.gdbinit', '**/.lldbinit']
+
+  - id: editor/sublime
+    trigger: editor
+    severity: info
+    title: { en: Sublime Text build command, es: Comando de compilación de Sublime Text }
+    files: ['**/*.sublime-project']
+    match: '"(?:cmd|shell_cmd)"\s*:\s*(?<command>[^\n]{1,400})'
+
+  # --- AI agents --------------------------------------------------------------
+  - id: agent/opencode-plugin
+    trigger: agent
+    severity: medium
+    title: { en: Opencode plugin that loads by itself, es: Plugin de Opencode que se carga solo }
+    files: ['**/.opencode/{plugin,plugins,tool,tools}/*.{js,ts,mjs,mts}']
+
+  - id: agent/gemini-extension
+    trigger: agent
+    severity: low
+    title: { en: Gemini CLI extension, es: Extensión de Gemini CLI }
+    files: ['**/gemini-extension.json']
+    needs: { en: you install it as an extension, es: que lo instales como extensión }
+    match: '"command"\s*:\s*"(?<command>[^"\n]{1,400})"'
+
+  - id: agent/codex-command
+    trigger: agent
+    severity: medium
+    title: { en: Codex command, es: Comando de Codex }
+    needs: { en: you trust the folder in Codex, es: que confíes en la carpeta dentro de Codex }
+    files: ['**/.codex/config.toml']
+    match: '^[ \t]*(?:command|notify|args)[ \t]*=[ \t]*(?<command>[^\n]+)$'
+
+  - id: agent/codex-permissions
+    trigger: agent
+    severity: medium
+    title: { en: Codex with fewer protections, es: Codex con menos protecciones }
+    needs: { en: you trust the folder in Codex, es: que confíes en la carpeta dentro de Codex }
+    files: ['**/.codex/config.toml']
+    match: '^[ \t]*(?<command>(?:sandbox_mode[ \t]*=[ \t]*["'']danger-full-access|approval_policy[ \t]*=[ \t]*["'']never|(?:openai_base_url|base_url)[ \t]*=)[^\n]*)$'
+
+  - id: agent/aider
+    trigger: agent
+    severity: medium
+    title: { en: Aider command, es: Comando de Aider }
+    files: ['**/.aider.conf.yml']
+    match: '^[ \t]*(?:lint-cmd|test-cmd|notifications-command|editor|openai-api-base)[ \t]*:[ \t]*(?<command>[^\n]+)$'
+
+  # --- Installing dependencies ------------------------------------------------
+  - id: install/npmrc
+    trigger: install
+    severity: medium
+    title: { en: npm setting that changes what runs, es: Ajuste de npm que cambia lo que se ejecuta }
+    files: ['**/.npmrc']
+    match: '^[ \t]*(?<command>(?:script-shell|shell|node-options|onload-script|git|python|init-module|scripts-prepend-node-path)[ \t]*=[^\n]+)$'
+
+  - id: install/npm-registry
+    trigger: install
+    severity: low
+    title: { en: Packages from another registry, es: Paquetes de otro registro }
+    files: ['**/.npmrc', '**/.yarnrc', '**/bunfig.toml']
+    match: '^[ \t]*(?<command>(?:@[\w-]+:)?registry[ \t"=]+(?!["'' ]*https://registry\.(?:npmjs\.org|yarnpkg\.com))[^\n]+)$'
+
+  - id: install/yarn
+    trigger: install
+    severity: low
+    title: { en: Yarn program or plugin of the repository, es: Programa o plugin de Yarn del repositorio }
+    files: ['**/.yarnrc.yml', '**/.yarnrc']
+    match: '^[ \t]*(?:-[ \t]*)?(?:yarnPath|yarn-path|path|spec)[ \t:]+["'']?(?<command>[^\n"'']+)["'']?$'
+
+  - id: install/pnpmfile
+    trigger: install
+    severity: medium
+    title: { en: Code that pnpm loads, es: Código que carga pnpm }
+    files: ['**/.pnpmfile.{cjs,mjs,js}', '**/pnpmfile.js']
+
+  - id: install/bun-preload
+    trigger: install
+    severity: low
+    title: { en: Code that Bun loads first, es: Código que Bun carga primero }
+    files: ['**/bunfig.toml']
+    match: '^[ \t]*preload[ \t]*=[ \t]*(?<command>[^\n]+)$'
+
+  - id: install/python-setup
+    trigger: install
+    severity: low
+    title: { en: Python install script, es: Script de instalación de Python }
+    files: ['**/setup.py']
+
+  - id: install/python-backend
+    trigger: install
+    severity: low
+    title: { en: Python build system inside the repository, es: Sistema de construcción de Python dentro del repositorio }
+    files: ['**/pyproject.toml']
+    match: '^[ \t]*backend-path[ \t]*=[ \t]*(?<command>[^\n]+)$'
+
+  - id: install/pip-index
+    trigger: install
+    severity: low
+    title: { en: Python packages from another index, es: Paquetes de Python de otro índice }
+    files: ['**/requirements*.txt', '**/requirements/*.txt', '**/pip.conf']
+    match: '^[ \t]*(?<command>(?:--(?:extra-)?index-url|-i|--trusted-host|--find-links|extra-index-url[ \t]*=|index-url[ \t]*=)[ \t=]+(?!https://(?:pypi\.org|download\.pytorch\.org)/)[^\n]+)$'
+
+  - id: install/pip-url
+    trigger: install
+    severity: low
+    title: { en: Python package from an address, es: Paquete de Python desde una dirección }
+    files: ['**/requirements*.txt', '**/requirements/*.txt']
+    match: '^(?!#)[ \t]*(?<command>(?:-e[ \t]+)?(?:[\w.\[\]-]+[ \t]*@[ \t]*)?(?:git\+|hg\+|https?:)[^\n]+)$'
+
+  - id: install/composer
+    trigger: install
+    severity: medium
+    title: { en: Composer install script, es: Script de instalación de Composer }
+    files: ['**/composer.json']
+    exclude: ['**/vendor/**']
+    match: '"(?:pre|post)-(?:install|update|autoload|create-project|root-package)[\w-]*"\s*:\s*(?<command>\[[^\]]{1,800}\]|"[^"\n]{1,400}")'
+
+  - id: install/gemfile
+    trigger: install
+    severity: info
+    title: { en: Gemfile. It is Ruby code, es: Gemfile. Es código Ruby }
+    files: ['**/gemfile', '**/gems.rb', '**/*.gemspec']
+
+  - id: install/podfile
+    trigger: install
+    severity: low
+    title: { en: CocoaPods script, es: Script de CocoaPods }
+    files: ['**/podfile', '**/*.podspec']
+    match: '^[ \t]*(?<command>(?:(?:s|spec)\.)?(?:prepare_command|script_phases?|(?:pre|post)_install)\b[^\n]*)$'
+
+  - id: install/conda
+    trigger: install
+    severity: info
+    title: { en: Conda activation script, es: Script de activación de Conda }
+    files: ['**/etc/conda/{activate,deactivate}.d/*']
+
+  - id: install/lefthook
+    trigger: git
+    severity: low
+    title: { en: Lefthook command, es: Comando de Lefthook }
+    needs: { en: the project activates its hooks, es: que el proyecto active sus hooks }
+    files: ['**/lefthook.{yml,yaml}', '**/.lefthook.{yml,yaml}']
+    match: '^[ \t]*(?:-[ \t]*)?run[ \t]*:[ \t]*(?<command>[^|>\n][^\n]*)$'
+
+  - id: git/pre-commit
+    trigger: git
+    severity: low
+    title: { en: pre-commit local command, es: Comando local de pre-commit }
+    needs: { en: 'you run "pre-commit install"', es: 'que ejecutes «pre-commit install»' }
+    files: ['**/.pre-commit-config.{yaml,yml}']
+    match: '^[ \t]*(?:-[ \t]*)?entry[ \t]*:[ \t]*(?<command>[^|>\n][^\n]*)$'
+
+  # --- Build and tests --------------------------------------------------------
+  - id: build/cargo-script
+    trigger: build
+    severity: low
+    title: { en: Rust build script, es: Script de compilación de Rust }
+    needs: { en: you build it, or your editor analyses it, es: 'que lo compiles, o que tu editor lo analice' }
+    files: ['**/build.rs']
+    sibling: cargo.toml
+
+  - id: build/cargo-config
+    trigger: build
+    severity: medium
+    title: { en: Cargo setting that runs a program, es: Ajuste de Cargo que ejecuta un programa }
+    needs: { en: you build it, or your editor analyses it, es: 'que lo compiles, o que tu editor lo analice' }
+    files: ['**/.cargo/config', '**/.cargo/config.toml']
+    match: '^[ \t]*(?<command>(?:runner|linker|rustc|rustc-wrapper|rustc-workspace-wrapper|rustdoc|credential-process|global-credential-providers)[ \t]*=[^\n]+)$'
+
+  - id: build/gradle-wrapper
+    trigger: build
+    severity: medium
+    title: { en: Gradle downloaded from an unofficial address, es: Gradle descargado de una dirección no oficial }
+    needs: { en: you open or build the project, es: que abras o compiles el proyecto }
+    files: ['**/gradle-wrapper.properties']
+    match: '^[ \t]*distributionUrl[ \t]*=[ \t]*(?<command>(?!https\\?://(?:services|downloads)\.gradle\.org/)[^\n]+)$'
+
+  - id: build/gradle
+    trigger: build
+    severity: info
+    title: { en: Gradle script. It runs when the project is imported, es: Script de Gradle. Se ejecuta al importar el proyecto }
+    needs: { en: you open or build the project, es: que abras o compiles el proyecto }
+    files: ['**/{build,settings,init}.gradle', '**/{build,settings,init}.gradle.kts']
+
+  - id: build/maven-extension
+    trigger: build
+    severity: low
+    title: { en: Maven extension, es: Extensión de Maven }
+    needs: { en: you open or build the project, es: que abras o compiles el proyecto }
+    files: ['**/.mvn/extensions.xml', '**/.mvn/jvm.config']
+
+  - id: build/maven-wrapper
+    trigger: build
+    severity: medium
+    title: { en: Maven downloaded from an unofficial address, es: Maven descargado de una dirección no oficial }
+    files: ['**/maven-wrapper.properties']
+    match: '^[ \t]*(?:distributionUrl|wrapperUrl)[ \t]*=[ \t]*(?<command>(?!https\\?://repo\d?\.maven\.(?:apache\.)?org/)[^\n]+)$'
+
+  - id: build/conftest
+    trigger: build
+    severity: info
+    title: { en: Code that pytest loads, es: Código que carga pytest }
+    needs: { en: you run or discover the tests, es: que ejecutes o descubras las pruebas }
+    files: ['**/conftest.py', '**/sitecustomize.py', '**/usercustomize.py']
+
+  - id: build/python-path-file
+    trigger: build
+    severity: medium
+    title: { en: Python file that runs on every start, es: Archivo de Python que se ejecuta en cada arranque }
+    files: ['**/*.pth']
+    match: '^(?<command>import[ \t][^\n]+)$'
+
+  - id: build/js-config
+    trigger: build
+    severity: info
+    title: { en: Configuration that is code, es: Configuración que es código }
+    needs: { en: you start, build or test, or an editor extension loads it, es: 'que inicies, compiles o pruebes, o que una extensión del editor lo cargue' }
+    files: ['**/{eslint,prettier,postcss,tailwind,vite,vitest,webpack,rollup,next,nuxt,svelte,astro,babel,jest,playwright,metro,craco,truffle,hardhat,remix,tsup,commitlint,stylelint}.config.{js,cjs,mjs,ts,cts,mts}', '**/.{eslintrc,prettierrc,babelrc,stylelintrc,mocharc,commitlintrc}.{js,cjs,mjs}', '**/gulpfile.{js,cjs,mjs,ts}', '**/gruntfile.js']
+    exclude: ['**/node_modules/**', '**/{test,tests,__tests__,fixtures,__fixtures__,playground,examples}/**']

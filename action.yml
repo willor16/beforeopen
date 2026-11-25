@@ -1,0 +1,27 @@
+name: beforeopen
+description: Warns when a pull request adds code that runs by itself on the machines of your contributors.
+author: BeforeOpen contributors
+branding:
+  icon: eye
+  color: orange
+inputs:
+  fail-on:
+    description: Lowest severity that fails the check (low, medium, high or never).
+    default: high
+  base:
+    description: Commit, branch or tag to compare with. By default, the base of the pull request.
+    default: ''
+  head:
+    description: Commit to check. By default, the one that is checked out.
+    default: ''
+  lang:
+    description: Language of the report (en or es).
+    default: en
+outputs:
+  count:
+    description: Number of new or modified execution points.
+  highest:
+    description: Highest severity found (none, info, low, medium or high).
+runs:
+  using: node24
+  main: dist/action.js

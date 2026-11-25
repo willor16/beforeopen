@@ -1,0 +1,19 @@
+# Common commands that start at a low severity instead of medium.
+# They are always listed, and any signal still raises them.
+# `command` is a regular expression that must match the whole command.
+
+known:
+  - id: known/git-hooks
+    command: '(?:is-ci \|\| )?(?:husky|simple-git-hooks|lefthook install|lint-staged)(?: install(?: \.husky)?)?(?: \|\| (?:true|exit 0|echo [\w ''"-]+))?'
+  - id: known/patch-package
+    command: '(?:npx )?patch-package(?: --error-on-(?:fail|warn))?'
+  - id: known/frameworks
+    command: '(?:nuxt|nuxi) prepare|svelte-kit sync(?: \|\| echo ''?''?)?|astro sync|prisma generate|panda codegen|fumadocs-mdx|wxt prepare|expo prebuild|ngcc|electron-builder install-app-deps'
+  - id: known/compilers
+    command: 'tsc(?: -p [\w./-]+| -b| --build)?|tsup|unbuild(?: --stub)?|rollup -c|vite build|tshy|pkgroll'
+  - id: known/package-scripts
+    command: '(?:npm|pnpm|yarn|bun) (?:run )?(?:build|compile|prepare|generate|codegen|typecheck|lint)(?::[\w-]+)?'
+  - id: known/only-allow
+    command: 'npx (?:-y |--yes )?only-allow (?:npm|pnpm|yarn|bun)'
+  - id: known/no-op
+    command: '(?:exit 0|true|:|echo [\w .,''"!-]+)'
