@@ -75,7 +75,7 @@ A scanner for hostile repositories is a target too:
 
 - Files are read. Nothing is executed, installed or checked out.
 - Git never reads the configuration of the target. It runs in an empty repository created for the scan, because settings such as `core.fsmonitor` start programs.
-- Git is located by absolute path, so a `git.exe` planted in the folder is not used.
+- Git is located by absolute path, so a `git.exe` planted in the folder or in its `node_modules` is not used.
 - Tricks with upper case, trailing dots, symbolic links, UTF-16 and invisible characters do not hide a file.
 - Output is cleaned, so a repository cannot control your terminal, your GitHub summary or the runner.
 - What cannot be analysed is reported, and the exit code says so.

@@ -10740,7 +10740,7 @@ function compare(before, after) {
 // src/tree/git.ts
 init_define_BEFOREOPEN_RULES();
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync as readFileSync2, rmSync, statSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync as readFileSync2, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, isAbsolute, join as joinPath, resolve } from "node:path";
 var GitError = class extends Error {
@@ -10748,12 +10748,22 @@ var GitError = class extends Error {
 var TIMEOUT_MS = 10 * 6e4;
 var NULL_DEVICE = "/dev/null";
 var gitPath;
+function realDir(path) {
+  try {
+    return realpathSync.native(path);
+  } catch {
+    return resolve(path);
+  }
+}
 function findGit(path = process.env["PATH"] ?? "", cwd = process.cwd()) {
   if (gitPath) return gitPath;
   const name = process.platform === "win32" ? "git.exe" : "git";
+  const here = realDir(cwd);
   for (const raw of path.split(delimiter)) {
     const dir = raw.replace(/^"|"$/g, "");
-    if (!dir || !isAbsolute(dir) || resolve(dir) === resolve(cwd)) continue;
+    if (!dir || !isAbsolute(dir)) continue;
+    const real = realDir(dir);
+    if (real === here || [dir, real].some((d) => d.split(/[\\/]/).some((part) => part.toLowerCase() === "node_modules"))) continue;
     const full = joinPath(dir, name);
     if (existsSync(full) && statSync(full).isFile()) return gitPath = full;
   }

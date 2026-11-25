@@ -77,7 +77,7 @@ Un analizador de repositorios hostiles también es un objetivo:
 
 - Los archivos se leen. No se ejecuta, instala ni extrae nada.
 - Git nunca lee la configuración del repositorio analizado. Corre en uno vacío creado para el análisis, porque ajustes como `core.fsmonitor` inician programas.
-- Git se localiza por su ruta absoluta, así que un `git.exe` plantado en la carpeta no se usa.
+- Git se localiza por su ruta absoluta, así que un `git.exe` plantado en la carpeta o en su `node_modules` no se usa.
 - Los trucos con mayúsculas, puntos finales, enlaces simbólicos, UTF-16 y caracteres invisibles no esconden un archivo.
 - La salida se limpia: un repositorio no puede controlar tu terminal, tu resumen de GitHub ni el ejecutor.
 - Lo que no se puede analizar se informa, y el código de salida lo refleja.

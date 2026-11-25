@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, test } from 'node:test';
@@ -118,14 +118,22 @@ test('the configuration of the scanned repository is never used', async () => {
   assert.ok(!existsSync(proof));
 });
 
-test('a git program in the current folder is not used', () => {
+test('a git program planted in the current folder is not used', () => {
   const dir = join(root, 'cwd-trap');
-  write(dir, { 'git.exe': 'not a program', git: 'not a program' });
+  const planted = { 'git.exe': 'not a program', git: 'not a program' };
+  write(dir, planted);
+  write(join(dir, 'node_modules', '.bin'), planted);
+  // Another name for the same folder, as with /var and /private/var on macOS.
+  const alias = join(root, 'cwd-trap-alias');
+  symlinkSync(dir, alias, 'junction');
   const script = `import { findGit } from ${JSON.stringify(new URL('../src/tree/git.ts', import.meta.url).href)}; console.log(findGit());`;
-  const path = ['.', dir, process.env['PATH']].join(process.platform === 'win32' ? ';' : ':');
-  const out = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: dir, env: { ...process.env, PATH: path, Path: path }, encoding: 'utf8' });
-  assert.equal(out.status, 0, out.stderr);
-  assert.ok(!out.stdout.includes('cwd-trap'), out.stdout);
+  const traps = ['.', dir, alias, join(dir, 'node_modules', '.bin'), join(alias, 'node_modules', '.bin'), dir.toUpperCase()];
+  for (const cwd of [dir, alias]) {
+    const path = [...traps, process.env['PATH']].join(process.platform === 'win32' ? ';' : ':');
+    const out = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd, env: { ...process.env, PATH: path, Path: path }, encoding: 'utf8' });
+    assert.equal(out.status, 0, out.stderr);
+    assert.ok(!out.stdout.toLowerCase().includes('cwd-trap'), out.stdout);
+  }
   assert.ok(findGit().length > 3);
 });
 

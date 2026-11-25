@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, isAbsolute, join as joinPath, resolve } from 'node:path';
 import { parseGitConfig } from '../gitconfig.ts';
@@ -19,16 +19,25 @@ const NULL_DEVICE = '/dev/null';
 
 let gitPath: string | undefined;
 
+/** Folders are compared by their real path: `/var` is a link on macOS, and case varies. */
+function realDir(path: string): string {
+  try { return realpathSync.native(path); } catch { return resolve(path); }
+}
+
 /**
  * On Windows, starting "git" by name looks in the current folder before PATH,
- * and that folder may contain a hostile git.exe.
+ * and that folder may contain a hostile git.exe. npx also adds to PATH the
+ * `node_modules/.bin` of the current folder, which a repository can fill.
  */
 export function findGit(path = process.env['PATH'] ?? '', cwd = process.cwd()): string {
   if (gitPath) return gitPath;
   const name = process.platform === 'win32' ? 'git.exe' : 'git';
+  const here = realDir(cwd);
   for (const raw of path.split(delimiter)) {
     const dir = raw.replace(/^"|"$/g, '');
-    if (!dir || !isAbsolute(dir) || resolve(dir) === resolve(cwd)) continue;
+    if (!dir || !isAbsolute(dir)) continue;
+    const real = realDir(dir);
+    if (real === here || [dir, real].some((d) => d.split(/[\\/]/).some((part) => part.toLowerCase() === 'node_modules'))) continue;
     const full = joinPath(dir, name);
     if (existsSync(full) && statSync(full).isFile()) return (gitPath = full);
   }
