@@ -1,40 +1,72 @@
-# beforeopen
+<h1 align="center" id="title">BEFOREOPEN</h1>
 
-**See what a repository will run on your machine before you open it.**
+<p align="center"><img src="https://socialify.git.ci/willor16/beforeopen/image?description=1&amp;descriptionEditable=See%20what%20a%20repository%20will%20run%20on%20your%20machine%20before%20you%20open%20it.&amp;font=Inter&amp;forks=1&amp;issues=1&amp;language=1&amp;name=1&amp;owner=1&amp;pattern=Circuit%20Board&amp;pulls=1&amp;stargazers=1&amp;theme=Dark" alt="project-image"></p>
 
-[Español](README.es.md)
+<p id="description">Opening a folder can be enough to run someone else's code: editor tasks, AI agent hooks, MCP servers, install scripts or git hooks. BeforeOpen reads a repository without executing anything and shows what would run, when, and why it looks dangerous. It does not look for known malware: it maps what can be executed, so it does not depend on having seen an attack before.</p>
 
-![Example of a scan](docs/demo.svg)
+<p align="center">
+<a href="https://github.com/willor16/beforeopen"><img src="https://img.shields.io/badge/willor16%2Fbeforeopen-black?style=social&amp;logo=github" alt="repository"></a>
+<a href="https://github.com/willor16/beforeopen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/willor16/beforeopen/ci.yml?branch=main&amp;label=CI" alt="CI"></a>
+<img src="https://img.shields.io/badge/runtime%20dependencies-0-brightgreen" alt="no runtime dependencies">
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+</p>
 
-Opening a folder can be enough to run someone else's code: editor tasks, AI agent hooks, MCP servers, install scripts, git hooks. `beforeopen` reads all of those places **without executing anything** and shows what would run, when, and why it looks dangerous.
+<p align="center"><a href="README.es.md">🌎 Leer en español</a></p>
 
-It does not look for known malware. It maps what a repository *can execute*, so it does not depend on having seen an attack before.
+<h2>📸 Project Screenshots:</h2>
 
-## Use it
+<p align="center"><img src="docs/demo.svg" alt="project-screenshot" width="800"></p>
+
+<h2>🧐 Features</h2>
+
+Some of the project's best features:
+
+*   Scans folders, GitHub and GitLab repositories and pull requests
+*   Follows every command to the scripts it runs
+*   Warns in each pull request with a GitHub Action
+*   Rules in YAML that anyone can extend
+*   Reports in English and Spanish
+*   No telemetry, no account and no install scripts
+
+<h2>🛠️ Installation Steps:</h2>
+
+You need [Node.js](https://nodejs.org) 20 or later, and git.
+
+<p>1. Clone the repository</p>
 
 ```sh
-npx beforeopen owner/repo                        # a GitHub repository, without cloning it
-npx beforeopen https://github.com/o/r/pull/12    # a pull request
-npx beforeopen https://gitlab.com/group/repo     # any git server
-npx beforeopen ~/Downloads/take-home-test        # a folder or an extracted archive
-npx beforeopen diff main feature                 # what a branch adds
+git clone https://github.com/willor16/beforeopen.git
+cd beforeopen
 ```
 
-> Run it from **outside** the folder you do not trust. `npx` itself reads the `.npmrc` and `node_modules` of the current folder. Better still, install it once: `npm install -g beforeopen`.
+<p>2. Build it</p>
 
-It needs Node 20 or later and git. There are no runtime dependencies, no install scripts, no telemetry and no account.
+```sh
+npm ci --ignore-scripts
+npm run build
+```
 
-| Exit code | Meaning |
-| --- | --- |
-| 0 | Nothing at or above `--fail-on` (default: `high`) |
-| 1 | Something at or above `--fail-on` |
-| 2 | Error, or something could not be analysed |
+<p>3. Install the command</p>
 
-`--json` gives a stable format for other tools. `--all` shows low severity findings. `--help` lists everything.
+```sh
+npm install -g .
+```
 
-## In every pull request
+<h2>🚀 Usage:</h2>
 
-A one-time scan is useful. A warning when someone adds a new way to run code is better:
+```sh
+beforeopen owner/repo                        # a GitHub repository, without cloning it
+beforeopen https://github.com/o/r/pull/12    # a pull request
+beforeopen https://gitlab.com/group/repo     # any git server
+beforeopen ~/Downloads/take-home-test        # a folder
+beforeopen diff main feature                 # what a branch adds
+```
+
+Add `--all` to see low severity findings, or `--json` for other tools. The exit code is 0 when nothing serious was found, 1 when something was, and 2 when the scan failed or was incomplete.
+
+<h2>🤖 GitHub Action:</h2>
+
+It reports only what a pull request adds or changes. It needs no token and no secrets.
 
 ```yaml
 # .github/workflows/beforeopen.yml
@@ -53,57 +85,49 @@ jobs:
       - uses: willor16/beforeopen@v0   # better: pin a full commit hash
 ```
 
-It reports only what the pull request **adds or changes**, including changes in scripts that run on install. It needs no token and no secrets, so it is safe for forks. Use `pull_request`, never `pull_request_target`.
+Use `pull_request`, never `pull_request_target`.
 
-## What it looks at
+<h2>🔍 What it looks at:</h2>
 
-| Moment | Places |
+| When | Where |
 | --- | --- |
-| Opening in an editor | VS Code tasks, settings and workspaces, JetBrains startup tasks, Vim, Emacs, Zed, MSBuild |
-| Opening with an AI agent | Hooks, helpers, permissions and traffic redirection in Claude Code, Cursor, Codex, Gemini CLI, Copilot, Windsurf, Kiro, Opencode. MCP servers. Instruction files and skills with hidden text |
-| Entering the folder | direnv, mise, autoenv |
-| Using git | Hooks, `.git/config`, hidden embedded repositories, submodules, husky, lefthook, pre-commit |
-| Opening in a container | Dev container commands, and access to your machine |
-| Installing | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods, registries |
-| Building or testing | Cargo, Gradle, Maven, pytest, configuration files that are code |
+| 📝 Opening in an editor | VS Code, JetBrains, Vim, Emacs, Zed, MSBuild |
+| 🤖 Opening with an AI agent | Claude Code, Cursor, Codex, Gemini CLI, Copilot, Windsurf, Kiro, Opencode, MCP servers, instructions with hidden text |
+| 📁 Entering the folder | direnv, mise, autoenv |
+| 🌿 Using git | Hooks, `.git/config`, hidden repositories, submodules, husky, lefthook, pre-commit |
+| 📦 Opening in a container | Dev container commands and access to your machine |
+| ⬇️ Installing | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods |
+| 🔨 Building or testing | Cargo, Gradle, Maven, pytest, configuration that is code |
 
-Every command is followed to the scripts it runs inside the repository. Those scripts are checked for downloads that get executed, stolen keys, hidden or obfuscated code, persistence, and more.
+<h2>🔒 How it stays safe:</h2>
 
-## How it stays safe
+*   Files are only read. Nothing is executed, installed or checked out
+*   Git never uses the configuration of the repository being scanned
+*   A `git` program planted in the folder is ignored
+*   Tricks with case, links, encodings and invisible characters do not hide a file
+*   The report cannot control your terminal or your GitHub summary
 
-A scanner for hostile repositories is a target too:
+<h2>⚠️ Limits:</h2>
 
-- Files are read. Nothing is executed, installed or checked out.
-- Git never reads the configuration of the target. It runs in an empty repository created for the scan, because settings such as `core.fsmonitor` start programs.
-- Git is located by absolute path, so a `git.exe` planted in the folder or in its `node_modules` is not used.
-- Tricks with upper case, trailing dots, symbolic links, UTF-16 and invisible characters do not hide a file.
-- Output is cleaned, so a repository cannot control your terminal, your GitHub summary or the runner.
-- What cannot be analysed is reported, and the exit code says so.
+*   It never says that a repository is safe
+*   It does not analyse your dependencies, binary files or code built at run time
+*   It has not been measured against a collection of real attacks
+*   On 40 popular repositories not used to adjust the rules, 39 could be scanned and 2 had a high finding, both in legitimate scripts
 
-## What it cannot do
+<h2>🍰 Contribution Guidelines:</h2>
 
-- **It never says that a repository is safe.** Any code can be dangerous once you run it.
-- It does not analyse your dependencies, only how the repository asks for them.
-- Binary files and code built at run time are out of reach. Heavily disguised scripts can avoid the signals, but the execution point is still listed.
-- Findings depend on your versions and settings. Many tools ask for trust first, and the report says when.
+New rules, false positives and ways to hide from the scanner are welcome, in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
-How noisy is it? On 2026-11-25 it ran on 40 popular repositories that had not been used to adjust the rules: 39 were scanned (one download timed out) and 2 had a high finding, both in legitimate scripts. After adjusting the rules with those results, version 0.1.0 reports a high finding in 1 of 80 repositories. It has not been measured against a collection of real attacks.
+<h2>💻 Built with</h2>
 
-## Add a rule
+Technologies used in the project:
 
-Rules are YAML and need no knowledge of the code. This is a complete one:
+*   TypeScript
+*   Node.js
+*   Git
+*   GitHub Actions
+*   YAML
 
-```yaml
-points:
-  - id: editor/example
-    trigger: editor
-    severity: low
-    title: { en: Example script, es: Script de ejemplo }
-    files: ['**/.example/start.sh']
-```
+<h2>🛡️ License:</h2>
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). To report a way to run code that goes unnoticed, see [SECURITY.md](SECURITY.md).
-
-## License
-
-[MIT](LICENSE). The bundle includes [third-party code](THIRD-PARTY-NOTICES.md).
+This project is licensed under the [MIT License](LICENSE). It includes [third-party code](THIRD-PARTY-NOTICES.md).

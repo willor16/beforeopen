@@ -1,40 +1,72 @@
-# beforeopen
+<h1 align="center" id="title">BEFOREOPEN</h1>
 
-**Mira qué ejecutará un repositorio en tu máquina antes de abrirlo.**
+<p align="center"><img src="https://socialify.git.ci/willor16/beforeopen/image?description=1&amp;descriptionEditable=Mira%20qu%C3%A9%20ejecutar%C3%A1%20un%20repositorio%20en%20tu%20m%C3%A1quina%20antes%20de%20abrirlo.&amp;font=Inter&amp;forks=1&amp;issues=1&amp;language=1&amp;name=1&amp;owner=1&amp;pattern=Circuit%20Board&amp;pulls=1&amp;stargazers=1&amp;theme=Dark" alt="imagen del proyecto"></p>
 
-[English](README.md)
+<p id="description">Abrir una carpeta puede bastar para ejecutar código ajeno: tareas del editor, hooks de agentes de IA, servidores MCP, scripts de instalación o hooks de git. BeforeOpen lee un repositorio sin ejecutar nada y muestra qué se ejecutaría, cuándo y por qué parece peligroso. No busca malware conocido: dibuja el mapa de lo que se puede ejecutar, así que no depende de haber visto antes un ataque.</p>
 
-![Ejemplo de un análisis](docs/demo.es.svg)
+<p align="center">
+<a href="https://github.com/willor16/beforeopen"><img src="https://img.shields.io/badge/willor16%2Fbeforeopen-black?style=social&amp;logo=github" alt="repositorio"></a>
+<a href="https://github.com/willor16/beforeopen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/willor16/beforeopen/ci.yml?branch=main&amp;label=CI" alt="CI"></a>
+<img src="https://img.shields.io/badge/dependencias-0-brightgreen" alt="sin dependencias en ejecución">
+<a href="LICENSE"><img src="https://img.shields.io/badge/licencia-MIT-blue" alt="licencia MIT"></a>
+</p>
 
-Abrir una carpeta puede bastar para ejecutar código ajeno: tareas del editor, hooks de agentes de IA, servidores MCP, scripts de instalación, hooks de git. `beforeopen` lee todos esos lugares **sin ejecutar nada** y muestra qué se ejecutaría, cuándo y por qué parece peligroso.
+<p align="center"><a href="README.md">🌎 Read in English</a></p>
 
-No busca malware conocido. Dibuja el mapa de lo que un repositorio *puede ejecutar*, así que no depende de haber visto antes un ataque.
+<h2>📸 Capturas del proyecto:</h2>
 
-## Cómo se usa
+<p align="center"><img src="docs/demo.es.svg" alt="captura del proyecto" width="800"></p>
+
+<h2>🧐 Características</h2>
+
+Algunas de las mejores características del proyecto:
+
+*   Analiza carpetas, repositorios de GitHub y GitLab, y pull requests
+*   Sigue cada comando hasta los scripts que ejecuta
+*   Avisa en cada pull request con una GitHub Action
+*   Reglas en YAML que cualquiera puede ampliar
+*   Informes en español e inglés
+*   Sin telemetría, sin cuentas y sin scripts de instalación
+
+<h2>🛠️ Pasos de instalación:</h2>
+
+Necesitas [Node.js](https://nodejs.org) 20 o posterior, y git.
+
+<p>1. Clona el repositorio</p>
 
 ```sh
-npx beforeopen owner/repo                        # un repositorio de GitHub, sin clonarlo
-npx beforeopen https://github.com/o/r/pull/12    # un pull request
-npx beforeopen https://gitlab.com/grupo/repo     # cualquier servidor git
-npx beforeopen ~/Downloads/prueba-tecnica        # una carpeta o un archivo ya extraído
-npx beforeopen diff main rama                    # lo que agrega una rama
+git clone https://github.com/willor16/beforeopen.git
+cd beforeopen
 ```
 
-> Ejecútalo desde **fuera** de la carpeta en la que no confías. El propio `npx` lee el `.npmrc` y el `node_modules` de la carpeta actual. Mejor aún, instálalo una vez: `npm install -g beforeopen`.
+<p>2. Compílalo</p>
 
-Necesita Node 20 o posterior y git. No tiene dependencias en tiempo de ejecución, scripts de instalación, telemetría ni cuentas.
+```sh
+npm ci --ignore-scripts
+npm run build
+```
 
-| Código de salida | Significado |
-| --- | --- |
-| 0 | Nada que alcance `--fail-on` (por defecto, `high`) |
-| 1 | Algo que alcanza `--fail-on` |
-| 2 | Error, o algo no se pudo analizar |
+<p>3. Instala el comando</p>
 
-`--json` da un formato estable para otras herramientas. `--all` muestra los hallazgos de gravedad baja. `--help` lo lista todo.
+```sh
+npm install -g .
+```
 
-## En cada pull request
+<h2>🚀 Uso:</h2>
 
-Un análisis suelto es útil. Un aviso cuando alguien agrega una forma nueva de ejecutar código es mejor:
+```sh
+beforeopen owner/repo                        # un repositorio de GitHub, sin clonarlo
+beforeopen https://github.com/o/r/pull/12    # un pull request
+beforeopen https://gitlab.com/grupo/repo     # cualquier servidor git
+beforeopen ~/Downloads/prueba-tecnica        # una carpeta
+beforeopen diff main rama                    # lo que agrega una rama
+```
+
+Agrega `--all` para ver los hallazgos de gravedad baja, o `--json` para otras herramientas. El código de salida es 0 si no encontró nada grave, 1 si encontró algo y 2 si el análisis falló o quedó incompleto.
+
+<h2>🤖 GitHub Action:</h2>
+
+Informa solo de lo que un pull request agrega o cambia. No necesita token ni secretos.
 
 ```yaml
 # .github/workflows/beforeopen.yml
@@ -55,57 +87,49 @@ jobs:
           lang: es
 ```
 
-Informa solo de lo que el pull request **agrega o cambia**, incluidos los cambios en scripts que se ejecutan al instalar. No necesita token ni secretos, así que es seguro con forks. Usa `pull_request`, nunca `pull_request_target`.
+Usa `pull_request`, nunca `pull_request_target`.
 
-## Qué revisa
+<h2>🔍 Qué revisa:</h2>
 
-| Momento | Lugares |
+| Cuándo | Dónde |
 | --- | --- |
-| Abrir en un editor | Tareas, ajustes y espacios de trabajo de VS Code, tareas de inicio de JetBrains, Vim, Emacs, Zed, MSBuild |
-| Abrir con un agente de IA | Hooks, comandos auxiliares, permisos y redirección de tráfico en Claude Code, Cursor, Codex, Gemini CLI, Copilot, Windsurf, Kiro y Opencode. Servidores MCP. Instrucciones y skills con texto oculto |
-| Entrar en la carpeta | direnv, mise, autoenv |
-| Usar git | Hooks, `.git/config`, repositorios ocultos dentro de otros, submódulos, husky, lefthook, pre-commit |
-| Abrir en un contenedor | Comandos del contenedor de desarrollo y acceso a tu máquina |
-| Instalar | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods, registros |
-| Compilar o probar | Cargo, Gradle, Maven, pytest, configuración que es código |
+| 📝 Al abrir en un editor | VS Code, JetBrains, Vim, Emacs, Zed, MSBuild |
+| 🤖 Al abrir con un agente de IA | Claude Code, Cursor, Codex, Gemini CLI, Copilot, Windsurf, Kiro, Opencode, servidores MCP, instrucciones con texto oculto |
+| 📁 Al entrar en la carpeta | direnv, mise, autoenv |
+| 🌿 Al usar git | Hooks, `.git/config`, repositorios ocultos, submódulos, husky, lefthook, pre-commit |
+| 📦 Al abrir en un contenedor | Comandos del contenedor de desarrollo y acceso a tu máquina |
+| ⬇️ Al instalar | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods |
+| 🔨 Al compilar o probar | Cargo, Gradle, Maven, pytest, configuración que es código |
 
-Cada comando se sigue hasta los scripts del repositorio que ejecuta. En ellos se buscan descargas que se ejecutan, robo de claves, código oculto u ofuscado, persistencia y más.
+<h2>🔒 Cómo se protege:</h2>
 
-## Cómo se protege
+*   Los archivos solo se leen. No se ejecuta, instala ni extrae nada
+*   Git nunca usa la configuración del repositorio analizado
+*   Un programa `git` plantado en la carpeta se ignora
+*   Los trucos con mayúsculas, enlaces, codificaciones y caracteres invisibles no esconden un archivo
+*   El informe no puede controlar tu terminal ni tu resumen de GitHub
 
-Un analizador de repositorios hostiles también es un objetivo:
+<h2>⚠️ Límites:</h2>
 
-- Los archivos se leen. No se ejecuta, instala ni extrae nada.
-- Git nunca lee la configuración del repositorio analizado. Corre en uno vacío creado para el análisis, porque ajustes como `core.fsmonitor` inician programas.
-- Git se localiza por su ruta absoluta, así que un `git.exe` plantado en la carpeta o en su `node_modules` no se usa.
-- Los trucos con mayúsculas, puntos finales, enlaces simbólicos, UTF-16 y caracteres invisibles no esconden un archivo.
-- La salida se limpia: un repositorio no puede controlar tu terminal, tu resumen de GitHub ni el ejecutor.
-- Lo que no se puede analizar se informa, y el código de salida lo refleja.
+*   Nunca dice que un repositorio es seguro
+*   No analiza tus dependencias, archivos binarios ni código construido al ejecutarse
+*   No se ha medido contra una colección de ataques reales
+*   En 40 repositorios populares no usados para ajustar las reglas, pudo analizar 39 y 2 tuvieron un hallazgo alto, ambos en scripts legítimos
 
-## Qué no puede hacer
+<h2>🍰 Cómo contribuir:</h2>
 
-- **Nunca dice que un repositorio es seguro.** Cualquier código puede ser peligroso cuando lo ejecutas.
-- No analiza tus dependencias, solo cómo las pide el repositorio.
-- No alcanza los archivos binarios ni el código que se construye al ejecutarse. Un script muy disfrazado puede evitar las señales, pero el punto de ejecución se lista igual.
-- Los resultados dependen de tus versiones y ajustes. Muchas herramientas piden confianza antes, y el informe lo indica.
+Se agradecen reglas nuevas, falsos positivos y formas de esconderse del analizador, en español o inglés. Mira [CONTRIBUTING.md](CONTRIBUTING.md) y [SECURITY.md](SECURITY.md).
 
-¿Cuánto ruido hace? El 25 de noviembre de 2026 se ejecutó en 40 repositorios populares que no se habían usado para ajustar las reglas: se analizaron 39 (una descarga agotó el tiempo) y 2 tuvieron un hallazgo alto, ambos en scripts legítimos. Tras ajustar las reglas con esos resultados, la versión 0.1.0 da un hallazgo alto en 1 de 80 repositorios. No se ha medido contra una colección de ataques reales.
+<h2>💻 Hecho con</h2>
 
-## Agrega una regla
+Tecnologías usadas en el proyecto:
 
-Las reglas son YAML y no hace falta conocer el código. Esta está completa:
+*   TypeScript
+*   Node.js
+*   Git
+*   GitHub Actions
+*   YAML
 
-```yaml
-points:
-  - id: editor/example
-    trigger: editor
-    severity: low
-    title: { en: Example script, es: Script de ejemplo }
-    files: ['**/.example/start.sh']
-```
+<h2>🛡️ Licencia:</h2>
 
-Mira [CONTRIBUTING.md](CONTRIBUTING.md) (en inglés). Para avisar de una forma de ejecutar código que pasa desapercibida, mira [SECURITY.md](SECURITY.md).
-
-## Licencia
-
-[MIT](LICENSE). El paquete incluye [código de terceros](THIRD-PARTY-NOTICES.md).
+Este proyecto usa la [licencia MIT](LICENSE). Incluye [código de terceros](THIRD-PARTY-NOTICES.md).

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="724" viewBox="0 0 860 724" role="img" aria-label="beforeopen">
 <rect width="100%" height="100%" rx="10" fill="#0d1117"/>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#d6dde6">
-<text x="24" y="46" xml:space="preserve"><tspan fill="#8b949e">$</tspan> npx beforeopen acme/take-home-test</text>
+<text x="24" y="46" xml:space="preserve"><tspan fill="#8b949e">$</tspan> beforeopen acme/take-home-test</text>
 <text x="24" y="67" xml:space="preserve"></text>
 <text x="24" y="88" xml:space="preserve"><tspan font-weight="700" fill="#f2f2f2">beforeopen</tspan>  github.com/acme/take-home-test</text>
 <text x="24" y="109" xml:space="preserve"></text>
