@@ -96,7 +96,8 @@ Use `pull_request`, never `pull_request_target`.
 | 🌿 Using git | Hooks, `.git/config`, hidden repositories, submodules, husky, lefthook, pre-commit |
 | 📦 Opening in a container | Dev container commands and access to your machine |
 | ⬇️ Installing | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods |
-| 🔨 Building or testing | Cargo, Gradle, Maven, pytest, configuration that is code |
+| 🔨 Building or testing | Cargo, Gradle, Maven, pytest, Visual Studio events, configuration that is code |
+| 🕵️ Running the project | Code hidden with spaces, invisible characters or encoding, and disguised file names |
 
 <h2>🔒 How it stays safe:</h2>
 
@@ -110,8 +111,11 @@ Use `pull_request`, never `pull_request_target`.
 
 *   It never says that a repository is safe
 *   It does not analyse your dependencies, binary files or code built at run time
-*   It has not been measured against a collection of real attacks
-*   On 40 popular repositories not used to adjust the rules, 39 could be scanned and 2 had a high finding, both in legitimate scripts
+*   It is strong with code that runs by itself and weak with malicious code inside the program
+*   Of 17 documented attacks not used to make the rules, it shows 6. Of the 6 that run by themselves, it shows 5
+*   On 39 popular repositories not used to adjust the rules, 1 had a high finding, in a legitimate file
+
+The full measurement, with its method and its failures, is in [docs/detection.md](docs/detection.md).
 
 <h2>🍰 Contribution Guidelines:</h2>
 

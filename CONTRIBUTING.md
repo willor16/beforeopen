@@ -43,4 +43,8 @@ Patterns must be linear: give every repetition a limit and never nest them. A te
 - Addresses end in `.invalid`, so they never resolve.
 - Invisible characters are built from their number. `node scripts/escape-invisible.mjs` fixes the ones that slip in.
 
+## Detection
+
+`node scripts/measure.ts` measures documented attacks. Add one to `test/attacks/corpus.ts` with its public report. Keep only the shape of the trigger: no payloads and no original names, hashes or addresses, which antivirus programs recognise. Never change a rule because of `test/attacks/holdout.ts`.
+
 `dist/action.js` is committed because GitHub runs it directly. Run `npm run build` before committing.

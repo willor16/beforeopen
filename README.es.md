@@ -98,7 +98,8 @@ Usa `pull_request`, nunca `pull_request_target`.
 | 🌿 Al usar git | Hooks, `.git/config`, repositorios ocultos, submódulos, husky, lefthook, pre-commit |
 | 📦 Al abrir en un contenedor | Comandos del contenedor de desarrollo y acceso a tu máquina |
 | ⬇️ Al instalar | npm, pnpm, Yarn, Bun, node-gyp, pip, setup.py, Composer, CocoaPods |
-| 🔨 Al compilar o probar | Cargo, Gradle, Maven, pytest, configuración que es código |
+| 🔨 Al compilar o probar | Cargo, Gradle, Maven, pytest, eventos de Visual Studio, configuración que es código |
+| 🕵️ Al ejecutar el proyecto | Código oculto con espacios, caracteres invisibles o codificación, y nombres de archivo disfrazados |
 
 <h2>🔒 Cómo se protege:</h2>
 
@@ -112,8 +113,11 @@ Usa `pull_request`, nunca `pull_request_target`.
 
 *   Nunca dice que un repositorio es seguro
 *   No analiza tus dependencias, archivos binarios ni código construido al ejecutarse
-*   No se ha medido contra una colección de ataques reales
-*   En 40 repositorios populares no usados para ajustar las reglas, pudo analizar 39 y 2 tuvieron un hallazgo alto, ambos en scripts legítimos
+*   Es fuerte con el código que se ejecuta solo y débil con el código malicioso dentro del programa
+*   De 17 ataques documentados no usados para hacer las reglas, muestra 6. De los 6 que se ejecutan solos, muestra 5
+*   En 39 repositorios populares no usados para ajustar las reglas, 1 tuvo un hallazgo alto, en un archivo legítimo
+
+La medición completa, con su método y sus fallos, está en [docs/detection.md](docs/detection.md) (en inglés).
 
 <h2>🍰 Cómo contribuir:</h2>
 

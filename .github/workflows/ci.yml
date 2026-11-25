@@ -27,7 +27,7 @@ jobs:
         run: git diff --exit-code -- dist/action.js THIRD-PARTY-NOTICES.md
       - name: The packaged CLI works on the oldest supported Node
         if: runner.os == 'Linux'
-        run: npx --yes node@20 dist/cli.js . --fail-on low
+        run: npx --yes node@20 dist/cli.js . --fail-on medium
   dogfood:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

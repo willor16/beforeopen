@@ -1,5 +1,6 @@
 // Measures detection over the documented attacks in test/attacks/corpus.ts.
 //   node scripts/measure.ts             summary and misses
+//   node scripts/measure.ts --holdout   the attacks that were not used to make the rules
 //   node scripts/measure.ts --markdown  table for docs/detection.md
 // Everything stays in memory: nothing from the corpus is written to disk.
 import { bundledRules } from '../src/rules.ts';
@@ -7,6 +8,7 @@ import { scan } from '../src/scan.ts';
 import { memoryTree } from '../src/tree/memory.ts';
 import { SEVERITIES, rank, type Severity } from '../src/types.ts';
 import { ATTACKS, type Attack, type Kind } from '../test/attacks/corpus.ts';
+import { HOLDOUT } from '../test/attacks/holdout.ts';
 
 type Result = Severity | 'missed';
 
@@ -20,7 +22,7 @@ export async function result(attack: Attack): Promise<{ result: Result; signals:
 }
 
 const all: { attack: Attack; result: Result; signals: string[] }[] = [];
-for (const attack of ATTACKS) all.push({ attack, ...(await result(attack)) });
+for (const attack of process.argv.includes('--holdout') ? HOLDOUT : ATTACKS) all.push({ attack, ...(await result(attack)) });
 
 const order: Result[] = [...SEVERITIES].reverse();
 const count = (list: typeof all, r: Result): number => list.filter((x) => x.result === r).length;

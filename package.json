@@ -1,6 +1,6 @@
 {
   "name": "beforeopen",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "See what a repository will run on your machine before you open it.",
   "keywords": [
     "security",
