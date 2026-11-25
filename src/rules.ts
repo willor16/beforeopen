@@ -11,7 +11,11 @@ export interface SignalRule {
   title: Text;
   severity: Partial<Record<Context, Severity>>;
   patterns: RegExp[];
+  /** Every one of these must appear too, anywhere in the text. */
+  all: RegExp[];
   unless: RegExp[];
+  /** Meaningful in any source file, not only in those that run by themselves. */
+  broad: boolean;
 }
 
 /** Declares an execution point without writing code. */
@@ -29,6 +33,8 @@ export interface PointRule {
   sibling?: string;
   /** Whether the matched file is read as a script. */
   script: boolean;
+  /** How the matched text is written. */
+  decode?: 'xml';
 }
 
 /** Common commands that only deserve a low severity. They are still listed. */
@@ -83,7 +89,7 @@ export function parseRules(source: string, name: string): Rules {
     signals: list(root['signals']).map((raw, i) => {
       const o = object(raw, `signals[${i}]`);
       const id = string(o['id'], `signals[${i}].id`);
-      only(o, id, ['id', 'title', 'severity', 'patterns', 'unless', 'flags']);
+      only(o, id, ['id', 'title', 'severity', 'patterns', 'all', 'unless', 'flags', 'broad']);
       const flags = `${o['flags'] === undefined ? 'i' : String(o['flags'])}gu`;
       const bySeverity: Partial<Record<Context, Severity>> = {};
       if (typeof o['severity'] === 'string') {
@@ -101,13 +107,16 @@ export function parseRules(source: string, name: string): Rules {
         title: text(o['title'], `${id}.title`),
         severity: bySeverity,
         patterns,
+        all: list(o['all']).map((p, n) => regex(p, `${id}.all[${n}]`, flags.replace('g', ''))),
+        broad: o['broad'] === true,
         unless: list(o['unless']).map((p, n) => regex(p, `${id}.unless[${n}]`, 'iu')),
       };
     }),
     points: list(root['points']).map((raw, i) => {
       const o = object(raw, `points[${i}]`);
       const id = string(o['id'], `points[${i}].id`);
-      only(o, id, ['id', 'trigger', 'severity', 'title', 'needs', 'files', 'exclude', 'match', 'sibling', 'script']);
+      only(o, id, ['id', 'trigger', 'severity', 'title', 'needs', 'files', 'exclude', 'match', 'sibling', 'script', 'decode']);
+      if (o['decode'] !== undefined && o['decode'] !== 'xml') fail(`${id}.decode must be xml`);
       const trigger = o['trigger'] as Trigger;
       if (!TRIGGERS.includes(trigger)) fail(`${id}.trigger must be one of ${TRIGGERS.join(', ')}`);
       const files = list(o['files']).map((f, n) => string(f, `${id}.files[${n}]`));
@@ -123,6 +132,7 @@ export function parseRules(source: string, name: string): Rules {
         ...(o['match'] !== undefined && { match: regex(o['match'], `${id}.match`, 'gimu') }),
         ...(o['sibling'] !== undefined && { sibling: string(o['sibling'], `${id}.sibling`) }),
         script: o['script'] === undefined ? o['match'] === undefined : o['script'] === true,
+        ...(o['decode'] === 'xml' && { decode: 'xml' as const }),
       };
     }),
     known: list(root['known']).map((raw, i) => {
@@ -165,13 +175,13 @@ export function bundledRules(): Rules {
 
 /** First match of every rule in a text. */
 export function findSignals(
-  rules: Rules, text: string, context: Context, file: string, firstLine = 1,
+  rules: Rules, text: string, context: Context, file: string, firstLine = 1, onlyBroad = false,
 ): Signal[] {
   const body = text;
   const out: Signal[] = [];
   for (const rule of rules.signals) {
     const severity = rule.severity[context];
-    if (!severity) continue;
+    if (!severity || (onlyBroad && !rule.broad) || !rule.all.every((p) => p.test(body))) continue;
     let found: { index: number; length: number; severity: Severity } | undefined;
     search: for (const pattern of rule.patterns) {
       for (const m of body.matchAll(pattern)) {
@@ -233,6 +243,9 @@ function excerpt(text: string, index: number, length: number): string {
   const cut = piece.indexOf('\n', index - from + Math.min(length, 400));
   return shorten((cut < 0 ? piece : piece.slice(0, cut)).trim(), 240);
 }
+
+/** Ids of the signals that mean the same in any source file. */
+export const broadSignals = (rules: Rules): Set<string> => new Set(rules.signals.filter((r) => r.broad).map((r) => r.id));
 
 export const isKnown = (rules: Rules, command: string): boolean =>
   rules.known.some((k) => k.commands.test(command.trim()));

@@ -11,8 +11,9 @@ const INTERPRETER = /^(?:node|nodejs|bun|deno|tsx|ts-node|python[\d.]*|py|ruby|p
 const SCRIPT_EXTENSIONS = ['', '.js', '.cjs', '.mjs', '.ts', '.sh', '.py', '.ps1', '.cmd', '.bat', '.rb', '/index.js', '/index.cjs', '/index.mjs', '/index.ts', '/__main__.py', '/__init__.py'];
 export const BINARY = /\.(png|jpe?g|gif|webp|ico|pdf|zip|gz|tgz|mp[34]|mov|wasm|exe|dll|so|dylib|node|lock)$/i;
 /** Data that a script may read but that nothing executes by accident. */
-const DATA = /\.(json[c5]?|md|mdx|ya?ml|toml|css|s[ac]ss|less|html?|txt|xml|csv|svg|map|lock|snap|d\.ts|woff2?|ttf|otf|eot)$/i;
+const DATA = /\.(json[c5]?|md|mdx|ya?ml|toml|css|s[ac]ss|less|html?|txt|xml|csv|svg|map|lock|snap|bin|dat|d\.ts|woff2?|ttf|otf|eot)$/i;
 const JS = /\.(c|m)?[jt]sx?$/i;
+const RUBY = /(\.(rb|gemspec|rake)|(^|\/)(gemfile|rakefile|podfile))$/i;
 const SHELL = /\.(sh|bash|zsh|ps1|cmd|bat|envrc)$/i;
 
 export interface Reached {
@@ -47,10 +48,13 @@ export async function follow(
     if (text === null) return;
     const dir = dirname(file.path);
     const head = text.slice(0, 200);
-    for (const local of localImports(file.path, head, text)) {
+    const locals = localImports(file.path, head, text);
+    if (locals.length > MAX_IMPORTS) partial = true;
+    for (const local of locals.slice(0, MAX_IMPORTS)) {
       const target = resolveFile(view, dir, local);
       if (target) await visitFile(target, depth + 1);
     }
+    for (const command of launchedPrograms(file.path, head, text)) await visitCommand(command, dir, depth, file.path);
     if (SHELL.test(file.path) || basename(file.path) === '.envrc' || /^#!.*\b(ba|z|da)?sh\b/.test(head)) {
       for (const line of text.split(/\r?\n/).slice(0, MAX_LINES)) {
         if (!/^\s*#/.test(line) && line.trim()) await visitCommand(line, dir, depth + 1, file.path);
@@ -68,7 +72,11 @@ export async function follow(
       const previous = words[i - 1] ?? '';
       if (/^(npm|pnpm|yarn|bun)(\.cmd)?$/i.test(word)) {
         const script = scriptName(words.slice(i + 1));
-        if (script) await visitScript(script, cwd, depth + 1);
+        if (script && !(await visitScript(script, cwd, depth + 1))) {
+          // `bun run file.js` takes a file when there is no script with that name.
+          const target = resolveFile(view, cwd, script);
+          if (target) await visitFile(target, depth + 1, true);
+        }
         continue;
       }
       if (word === '-m' && /^(python[\d.]*|py)$/i.test(previous) && words[i + 1]) {
@@ -86,7 +94,8 @@ export async function follow(
     }
   };
 
-  const visitScript = async (name: string, cwd: string, depth: number): Promise<void> => {
+  const visitScript = async (name: string, cwd: string, depth: number): Promise<boolean> => {
+    let found = false;
     for (let dir = cwd; ; dir = dirname(dir)) {
       const path = dir ? `${dir}/package.json` : 'package.json';
       const text = view.find(path) ? await view.text(path) : null;
@@ -95,13 +104,15 @@ export async function follow(
         for (const key of [`pre${name}`, name, `post${name}`]) {
           const node = at(doc.root, 'scripts', key);
           const body = str(node);
-          if (!node || !body || seenCommands.has(`${dir}\0${body}`)) continue;
+          if (!node || !body) continue;
+          found = true;
+          if (seenCommands.has(`${dir}\0${body}`)) continue;
           commands.push({ text: body, file: view.find(path)!.path, line: doc.line(node) });
           await visitCommand(body, dir, depth);
         }
-        return;
+        return found;
       }
-      if (dir === '') return;
+      if (dir === '') return false;
     }
   };
 
@@ -130,12 +141,32 @@ function resolveFile(view: RepoView, cwd: string, raw: string): string | null {
 /** Relative modules that a script loads. Any `'./x'` string counts. */
 function localImports(path: string, head: string, text: string): string[] {
   const out = new Set<string>();
-    if (JS.test(path) || /^#!.*\b(node|bun|deno)\b/.test(head)) {
+  if (JS.test(path) || /^#!.*\b(node|bun|deno)\b/.test(head)) {
     for (const m of text.matchAll(/["'`](\.{1,2}\/[^"'`\n$]{1,200})["'`]/g)) out.add(m[1]!);
+    addScripts(text, out);
+  } else if (RUBY.test(path)) {
+    addScripts(text, out);
   } else if (/\.py$/i.test(path) || /^#!.*python/.test(head)) {
+    addScripts(text, out);
     for (const m of text.matchAll(/^[ \t]*(?:from|import)[ \t]+\.?([A-Za-z_][\w.]{0,100})/gm)) out.add(m[1]!.replace(/\./g, '/'));
   }
-  return [...out].slice(0, MAX_IMPORTS);
+  return [...out];
+}
+
+/** Quoted names of scripts, as in `spawn(bin, ["task.js"])`. */
+function addScripts(text: string, out: Set<string>): void {
+  for (const m of text.matchAll(/["'`]([\w@./-]{1,120}\.(?:[cm]?js|ts|py|rb|sh|ps1|bat|cmd))["'`]/g)) out.add(m[1]!);
+}
+
+/** Commands that a script starts through a shell, as in `system("node x.js")`. */
+function launchedPrograms(path: string, head: string, text: string): string[] {
+  if (!JS.test(path) && !RUBY.test(path) && !/\.py$/i.test(path) && !/^#!.*\b(node|bun|deno|python|ruby)/.test(head)) return [];
+  const out = new Set<string>();
+  for (const m of text.matchAll(/\b(?:system|exec|execSync|spawn|spawnSync|popen|Popen|run|call|check_call|check_output|IO\.popen)\s*\(?\s*["'`]([^"'`\n]{3,400})["'`]/g)) {
+    if (/\s/.test(m[1]!)) out.add(m[1]!);
+    if (out.size >= MAX_IMPORTS) break;
+  }
+  return [...out];
 }
 
 /** Script that a package manager would run, or null when it is not `run`-like. */
@@ -144,8 +175,9 @@ function scriptName(rest: string[]): string | null {
   const [first, second] = words;
   if (!first) return null;
   if (/^(run|run-script|rum|urn)$/.test(first)) return second ?? null;
+  if (/^(exec|x)$/.test(first)) return null;
   if (/^(install|i|ci|add|exec|x|dlx|create|init|publish|pack|link|update|config|set|cache)$/.test(first)) return null;
-  return /^[\w:.-]+$/.test(first) ? first : null;
+  return /^[\w:./-]+$/.test(first) ? first : null;
 }
 
 /** Splits a command on spaces and shell operators, keeping quoted text together. */

@@ -7,6 +7,9 @@
 # patterns   JavaScript regular expressions (flags: i, u, g). Any of them is enough.
 # unless     Only for instructions: lowers the finding to info when it matches nearby.
 #            It never applies to commands or scripts, where it could be abused.
+# all        Every one of these must also appear, anywhere in the same text.
+# broad      true when it means the same in any source file. Those files are read
+#            even if nothing runs them by itself.
 # flags      Replaces the default "i".
 #
 # Keep patterns linear: no nested quantifiers and always a limit such as {0,200}.
@@ -67,18 +70,20 @@ signals:
       - '(?:^|[\s;&|(`])(?:env|printenv|set|export\s+-p)\s*\|\s*(?:curl|wget|nc|base64|xxd|gzip)\b'
       - '\b(?:curl|wget)\b[^\n]{0,200}(?:-d|--data(?:-\w+)?|-F|--post-data)[ =]["'']?@?\$\(\s*(?:env|printenv)\b'
       - 'json\.dumps\(\s*(?:dict\(\s*)?os\.environ'
+      - '\b(?:post|put|request|fetch|send)\w*\s*\([^\n]{0,160}(?:\.\.\.\s*process\.env\b|[,:]\s*process\.env\s*[,})])'
 
   - id: encoded-command
     title:
       en: Runs encoded or encrypted code
       es: Ejecuta código codificado o cifrado
     severity: { command: high, script: high, instructions: medium }
+    broad: true
     patterns:
       - '\b(?:powershell|pwsh)(?:\.exe)?\b[^\n]{0,200}\s-e(?:nc(?:odedcommand)?|c)?\s+["'']?[A-Za-z0-9+/=]{24,}'
       - '\bbase64\s+(?:-d|-D|--decode)\b[^\n]{0,80}\|\s*(?:sudo\s+)?(?:(?:ba|z|da)?sh|node|python[\d.]*|perl|ruby)\b'
       - '\beval\s*\(\s*(?:atob|Buffer\.from|decodeURIComponent|unescape|String\.fromCharCode)\s*\('
       - '\b(?:new\s+)?Function\s*\(\s*(?:["'']require["'']\s*,\s*)?(?:atob|Buffer\.from)\s*\('
-      - '\bexec\s*\(\s*(?:__import__\(["'']\w{2,10}["'']\)|base64|zlib|marshal|codecs|bytes\.fromhex|compile)\b'
+      - '\bexec\s*\(\s*(?:__import__\(["'']\w{2,10}["'']\)|(?:base64|zlib|marshal|codecs|bytes\.fromhex)\b)'
       - '\bFromBase64String\b[^\n]{0,200}\b(?:iex|Invoke-Expression|Assembly\]::Load)\b'
       - '\bxxd\s+-r\b[^\n]{0,80}\|\s*(?:ba|z)?sh\b'
 
@@ -87,19 +92,104 @@ signals:
       en: Deliberately unreadable code
       es: Código ilegible a propósito
     severity: high
+    broad: true
     patterns:
       - '(?:\b_0x[a-f0-9]{4,6}\b[^\n]{0,120}?){4}'
-      - '(?:\\x[2-7][0-9a-f]){40}'
+      - '(?:\\x[2-7][0-9a-f]){120}'
       - '(?:String\.fromCharCode\([^)\n]{0,40}\)[^\n]{0,10}\+){4}'
       - '\bglobal\s*\[\s*["'']!["'']\s*\]\s*='
+
+  - id: invisible-code
+    title:
+      en: Long text made of characters that are not shown
+      es: Texto largo hecho de caracteres que no se muestran
+    severity: high
+    broad: true
+    flags: ''
+    patterns:
+      - '[\u{fe00}-\u{fe0f}\u{e0100}-\u{e01ef}]{8,}'
+      - '[\u{e0020}-\u{e007f}]{12,}'
+      - '[\u{200b}-\u{200d}\u{2060}-\u{2064}\u{180e}\u{3164}\u{ffa0}]{16,}'
+
+  - id: remote-code
+    title:
+      en: Turns received text into a program with full access
+      es: Convierte un texto recibido en un programa con acceso total
+    severity: high
+    broad: true
+    patterns:
+      - '\bFunction\s*\(\s*["''`]require["''`]\s*,[^\n]{0,200}?\)\s*\(\s*require\b'
+      - '\bFunction\s*\.\s*constructor\s*\)?\s*\(\s*["''`]require["''`]'
+      - '\beval\s*\(\s*(?:await\s+)?\(?\s*(?:await\s+)?(?:fetch|axios\.get|got|request)\s*\('
+      - '\bexec\s*\(\s*(?:requests\.get|urllib\.request\.urlopen|urlopen)\s*\('
+
+  - id: coded-and-evaluated
+    title:
+      en: Runs a long list of coded characters
+      es: Ejecuta una lista larga de caracteres codificados
+    severity: { script: high, command: high }
+    broad: true
+    patterns:
+      - '(?<![\w.$])(?:eval|exec|Function)\s*\([^;\n"''`]{0,120}?\[\s*(?:\d{2,3}\s?,\s?){100}'
+      - '(?<![\w.$])(?:eval|exec)\s*\([^;\n"''`]{0,120}?\(\s*(?:\d{2,3}\s?,\s?){100}'
+
+  - id: coded-text-evaluated
+    title:
+      en: Runs a long block of coded text
+      es: Ejecuta un bloque largo de texto codificado
+    severity: { script: high, command: high }
+    broad: true
+    patterns:
+      - '(?<![\w.$])(?:eval|exec|new\s+Function)\s*\((?!\s*["''`])[^;\n]{0,100}?(?:Buffer\.from|\batob|b64decode|fromhex|unhexlify|fromCharCode)\s*\('
+    all:
+      - '["''`](?:[0-9a-f]{2}){200}|["''`](?:[A-Za-z0-9+/]{4}){250}'
+
+  - id: dns-payload
+    title:
+      en: Runs what it receives in a DNS answer
+      es: Ejecuta lo que recibe en una respuesta DNS
+    severity: high
+    broad: true
+    patterns:
+      - '\b(?:dig|nslookup|host\s+-t)\b[^\n]{0,80}\bTXT\b[\s\S]{0,300}?(?:(?<![\w.$-])eval\b|\|\s*(?:ba|z)?sh\b)'
+      - '\bResolve-DnsName\b[\s\S]{0,300}?(?:\biex\b|\bInvoke-Expression\b)'
+      - '\bresolveTxt\s*\([\s\S]{0,400}?(?:(?<![\w.$])eval\s*\(|\bnew\s+Function\s*\(|\bexecSync\s*\()'
+
+  - id: exposes-require
+    title:
+      en: Gives global access to load any module
+      es: Da acceso global para cargar cualquier módulo
+    severity: { command: medium, script: medium }
+    patterns:
+      - '\bglobal(?:This)?\s*(?:\[[^\]\n]{1,60}\]|\.\w{1,40})\s*=\s*(?:require|module)\s*[;,\n]'
+
+  - id: windows-script
+    title:
+      en: Starts a Windows script
+      es: Inicia un script de Windows
+    severity: { command: high, script: low }
+    patterns:
+      - '\b(?:cscript|wscript)(?:\.exe)?\b[^\n]{0,200}\.(?:vbs|vbe|js|jse|wsf)\b'
+
+  - id: downloads-and-starts
+    title:
+      en: Downloads something and starts programs
+      es: Descarga algo e inicia programas
+    severity: { script: medium }
+    patterns:
+      - '\b(?:urllib\.request\.(?:urlopen|urlretrieve)|requests\.get|urlretrieve)\s*\('
+    all:
+      - '\bsubprocess\.(?:Popen|run|call|check_call)|\bos\.system\s*\(|\bos\.startfile\s*\('
 
   - id: hidden-by-spaces
     title:
       en: Text pushed out of sight with spaces
       es: Texto escondido detrás de muchos espacios
     severity: { command: high, script: high, instructions: medium }
+    broad: true
     patterns:
       - '\S[ \t\u{a0}\u{3000}]{150,}(?:[^\s|#/*\\-]|/[^/*\s])'
+      - '\n[ \t]{300,}[^\s]'
 
   - id: hidden-characters
     title:
@@ -146,6 +236,7 @@ signals:
       en: Fetches code or orders from a blockchain
       es: Obtiene código u órdenes desde una blockchain
     severity: high
+    broad: true
     patterns:
       - '\beth_getTransactionByHash\b|\beth_getTransactionReceipt\b'
       - '\b(?:bsc-dataseed\d{0,2}\.(?:binance|bnbchain)\.org|api\.trongrid\.io|fullnode\.mainnet\.aptoslabs\.com|bsc-rpc\.publicnode\.com)\b'
@@ -274,6 +365,35 @@ signals:
       - '\b(?:ignora|olvida)\s+(?:todas\s+)?(?:las\s+|tus\s+)?instrucciones\s+(?:anteriores|previas)\b'
     unless:
       - 'prompt[ -]injection|\battacks?\b|\bjailbreak|\be\.g\.|\bexample\b|\bejemplo\b|["''`“]\s*(?:ignore|disregard|forget|ignora|olvida)'
+
+  - id: works-in-silence
+    title:
+      en: Asks the agent to act without output or confirmation
+      es: Pide al agente que actúe sin mostrar nada ni confirmar
+    severity: { instructions: medium }
+    patterns:
+      - '\bsilently\s+(?:run|execute|call|send|post|upload|install)\b'
+      - '\b(?:run|execute|ejecuta)\b[^\n]{0,160}\b(?:with\s+no\s+output|without\s+(?:any\s+)?(?:output|confirmation|telling)|no\s+output\s+and\b|sin\s+confirmaci[oó]n)'
+      - '\bsuppress\s+(?:all|any)\s+(?:the\s+)?output\b'
+
+  - id: sends-data-away
+    title:
+      en: Asks the agent to send private data to an address
+      es: Pide al agente que envíe datos privados a una dirección
+    severity: { instructions: medium }
+    patterns:
+      - '\b(?:send|post|upload|forward|transmit|exfiltrate|copy)\w*\b[^\n]{0,200}(?:\.env\b|environment\s+variables?|os\.environ|process\.env|api\s+keys?|credentials?|secrets?|conversation|user(?:''s)?\s+(?:message|prompt))[^\n]{0,160}https?://(?!localhost|127\.)'
+      - '(?:\.env\b|environment\s+variables?|os\.environ|process\.env|api\s+keys?|credentials?|\bSECRET\b|conversation|user(?:''s)?\s+(?:message|prompt))[^\n]{0,200}\b(?:send|post|upload|forward|transmit|exfiltrate)s?\b[^\n]{0,120}https?://(?!localhost|127\.)'
+
+  - id: changes-agent
+    title:
+      en: Asks the agent to change its own settings
+      es: Pide al agente que cambie sus propios ajustes
+    severity: { instructions: medium }
+    patterns:
+      - '\b(?:write|add|set|update|edit|modify|append|change|put)\b[^\n]{0,160}~[\\/]\.(?:codex[\\/]config|claude[\\/]settings|claude\.json|gemini[\\/]settings|cursor[\\/](?:mcp|cli)|config[\\/]opencode[\\/]opencode)\b'
+      - '\b(?:write|add|set|export|put)\b[^\n]{0,60}\b(?:ANTHROPIC|OPENAI|GEMINI)_(?:BASE_URL|API_BASE)\b[^\n]{0,60}https?://(?!localhost|127\.)'
+      - '\bset\b[^\n]{0,40}\bapproval_policy\b[^\n]{0,20}\bnever\b'
 
   - id: order-in-comment
     title:

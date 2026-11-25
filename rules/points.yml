@@ -8,6 +8,7 @@
 #           command is the group named "command", the first group or the match.
 # sibling   Optional file that must exist in the same folder.
 # script    Whether the file is read as a script. By default, only without `match`.
+# decode    "xml" when the matched text uses entities such as &gt;.
 
 points:
   # --- Terminal ---------------------------------------------------------------
@@ -71,7 +72,8 @@ points:
     title: { en: MSBuild step that starts a program, es: Paso de MSBuild que inicia un programa }
     needs: { en: you open or build the project in Visual Studio, es: que abras o compiles el proyecto en Visual Studio }
     files: ['**/directory.build.{props,targets}', '**/*.{csproj,vbproj,fsproj,vcxproj,targets,props,user}']
-    match: '<Exec\s[^>]{0,300}?\bCommand="(?<command>[^"]{1,800})"|<(?:Pre|Post)BuildEvent>(?<event>[^<]{1,800})<'
+    decode: xml
+    match: '<Exec\s[^>]{0,2000}?\bCommand="(?<command>[^"]{1,20000})"|<(?:Pre|Post)(?:Build|Link)Event>\s*(?:<Command>)?\s*(?<event>[^<\s][^<]{0,40000})<'
 
   - id: editor/debugger-init
     trigger: editor
@@ -200,6 +202,20 @@ points:
     severity: info
     title: { en: Gemfile. It is Ruby code, es: Gemfile. Es código Ruby }
     files: ['**/gemfile', '**/gems.rb', '**/*.gemspec']
+
+  - id: install/gemfile-command
+    trigger: install
+    severity: medium
+    title: { en: Gemfile that starts a program, es: Gemfile que inicia un programa }
+    needs: { en: you use any bundle command, es: que uses cualquier comando de bundle }
+    files: ['**/gemfile', '**/gems.rb']
+    match: '^[ \t]*(?<command>(?:Kernel\.|IO\.)?(?:system|exec|spawn|popen)\b[^\n]{1,400}|%x[\{\[(][^\n]{1,400}|`[^`\n]{1,400}`)'
+
+  - id: install/gem-extension
+    trigger: install
+    severity: low
+    title: { en: Native extension of a gem, es: Extensión nativa de una gema }
+    files: ['**/extconf.rb']
 
   - id: install/podfile
     trigger: install

@@ -294,6 +294,7 @@ async function openTree(dir: string, sha: string, label: string, onClose: () => 
     files: [...shas.keys()],
     links,
     gaps,
+    id: (path) => shas.get(path),
     read: async (path) => {
       const id = shas.get(path);
       return id ? objects.read(id) : null;

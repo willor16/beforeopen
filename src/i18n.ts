@@ -8,6 +8,7 @@ export const TRIGGER_TEXT: Record<Trigger, Text> = {
   container: { en: 'On opening in a container', es: 'Al abrir en un contenedor' },
   install: { en: 'On installing dependencies', es: 'Al instalar dependencias' },
   build: { en: 'On building or testing', es: 'Al compilar o probar' },
+  run: { en: 'On running the project', es: 'Al ejecutar el proyecto' },
 };
 
 export const SEVERITY_TEXT: Record<Severity, Text> = {

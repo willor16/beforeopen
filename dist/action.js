@@ -57,6 +57,7 @@ var init_define_BEFOREOPEN_RULES = __esm({
 #           command is the group named "command", the first group or the match.
 # sibling   Optional file that must exist in the same folder.
 # script    Whether the file is read as a script. By default, only without \`match\`.
+# decode    "xml" when the matched text uses entities such as &gt;.
 
 points:
   # --- Terminal ---------------------------------------------------------------
@@ -120,7 +121,8 @@ points:
     title: { en: MSBuild step that starts a program, es: Paso de MSBuild que inicia un programa }
     needs: { en: you open or build the project in Visual Studio, es: que abras o compiles el proyecto en Visual Studio }
     files: ['**/directory.build.{props,targets}', '**/*.{csproj,vbproj,fsproj,vcxproj,targets,props,user}']
-    match: '<Exec\\s[^>]{0,300}?\\bCommand="(?<command>[^"]{1,800})"|<(?:Pre|Post)BuildEvent>(?<event>[^<]{1,800})<'
+    decode: xml
+    match: '<Exec\\s[^>]{0,2000}?\\bCommand="(?<command>[^"]{1,20000})"|<(?:Pre|Post)(?:Build|Link)Event>\\s*(?:<Command>)?\\s*(?<event>[^<\\s][^<]{0,40000})<'
 
   - id: editor/debugger-init
     trigger: editor
@@ -250,6 +252,20 @@ points:
     title: { en: Gemfile. It is Ruby code, es: Gemfile. Es c\xF3digo Ruby }
     files: ['**/gemfile', '**/gems.rb', '**/*.gemspec']
 
+  - id: install/gemfile-command
+    trigger: install
+    severity: medium
+    title: { en: Gemfile that starts a program, es: Gemfile que inicia un programa }
+    needs: { en: you use any bundle command, es: que uses cualquier comando de bundle }
+    files: ['**/gemfile', '**/gems.rb']
+    match: '^[ \\t]*(?<command>(?:Kernel\\.|IO\\.)?(?:system|exec|spawn|popen)\\b[^\\n]{1,400}|%x[\\{\\[(][^\\n]{1,400}|\`[^\`\\n]{1,400}\`)'
+
+  - id: install/gem-extension
+    trigger: install
+    severity: low
+    title: { en: Native extension of a gem, es: Extensi\xF3n nativa de una gema }
+    files: ['**/extconf.rb']
+
   - id: install/podfile
     trigger: install
     severity: low
@@ -355,6 +371,9 @@ points:
 # patterns   JavaScript regular expressions (flags: i, u, g). Any of them is enough.
 # unless     Only for instructions: lowers the finding to info when it matches nearby.
 #            It never applies to commands or scripts, where it could be abused.
+# all        Every one of these must also appear, anywhere in the same text.
+# broad      true when it means the same in any source file. Those files are read
+#            even if nothing runs them by itself.
 # flags      Replaces the default "i".
 #
 # Keep patterns linear: no nested quantifiers and always a limit such as {0,200}.
@@ -415,18 +434,20 @@ signals:
       - '(?:^|[\\s;&|(\`])(?:env|printenv|set|export\\s+-p)\\s*\\|\\s*(?:curl|wget|nc|base64|xxd|gzip)\\b'
       - '\\b(?:curl|wget)\\b[^\\n]{0,200}(?:-d|--data(?:-\\w+)?|-F|--post-data)[ =]["'']?@?\\$\\(\\s*(?:env|printenv)\\b'
       - 'json\\.dumps\\(\\s*(?:dict\\(\\s*)?os\\.environ'
+      - '\\b(?:post|put|request|fetch|send)\\w*\\s*\\([^\\n]{0,160}(?:\\.\\.\\.\\s*process\\.env\\b|[,:]\\s*process\\.env\\s*[,})])'
 
   - id: encoded-command
     title:
       en: Runs encoded or encrypted code
       es: Ejecuta c\xF3digo codificado o cifrado
     severity: { command: high, script: high, instructions: medium }
+    broad: true
     patterns:
       - '\\b(?:powershell|pwsh)(?:\\.exe)?\\b[^\\n]{0,200}\\s-e(?:nc(?:odedcommand)?|c)?\\s+["'']?[A-Za-z0-9+/=]{24,}'
       - '\\bbase64\\s+(?:-d|-D|--decode)\\b[^\\n]{0,80}\\|\\s*(?:sudo\\s+)?(?:(?:ba|z|da)?sh|node|python[\\d.]*|perl|ruby)\\b'
       - '\\beval\\s*\\(\\s*(?:atob|Buffer\\.from|decodeURIComponent|unescape|String\\.fromCharCode)\\s*\\('
       - '\\b(?:new\\s+)?Function\\s*\\(\\s*(?:["'']require["'']\\s*,\\s*)?(?:atob|Buffer\\.from)\\s*\\('
-      - '\\bexec\\s*\\(\\s*(?:__import__\\(["'']\\w{2,10}["'']\\)|base64|zlib|marshal|codecs|bytes\\.fromhex|compile)\\b'
+      - '\\bexec\\s*\\(\\s*(?:__import__\\(["'']\\w{2,10}["'']\\)|(?:base64|zlib|marshal|codecs|bytes\\.fromhex)\\b)'
       - '\\bFromBase64String\\b[^\\n]{0,200}\\b(?:iex|Invoke-Expression|Assembly\\]::Load)\\b'
       - '\\bxxd\\s+-r\\b[^\\n]{0,80}\\|\\s*(?:ba|z)?sh\\b'
 
@@ -435,19 +456,104 @@ signals:
       en: Deliberately unreadable code
       es: C\xF3digo ilegible a prop\xF3sito
     severity: high
+    broad: true
     patterns:
       - '(?:\\b_0x[a-f0-9]{4,6}\\b[^\\n]{0,120}?){4}'
-      - '(?:\\\\x[2-7][0-9a-f]){40}'
+      - '(?:\\\\x[2-7][0-9a-f]){120}'
       - '(?:String\\.fromCharCode\\([^)\\n]{0,40}\\)[^\\n]{0,10}\\+){4}'
       - '\\bglobal\\s*\\[\\s*["'']!["'']\\s*\\]\\s*='
+
+  - id: invisible-code
+    title:
+      en: Long text made of characters that are not shown
+      es: Texto largo hecho de caracteres que no se muestran
+    severity: high
+    broad: true
+    flags: ''
+    patterns:
+      - '[\\u{fe00}-\\u{fe0f}\\u{e0100}-\\u{e01ef}]{8,}'
+      - '[\\u{e0020}-\\u{e007f}]{12,}'
+      - '[\\u{200b}-\\u{200d}\\u{2060}-\\u{2064}\\u{180e}\\u{3164}\\u{ffa0}]{16,}'
+
+  - id: remote-code
+    title:
+      en: Turns received text into a program with full access
+      es: Convierte un texto recibido en un programa con acceso total
+    severity: high
+    broad: true
+    patterns:
+      - '\\bFunction\\s*\\(\\s*["''\`]require["''\`]\\s*,[^\\n]{0,200}?\\)\\s*\\(\\s*require\\b'
+      - '\\bFunction\\s*\\.\\s*constructor\\s*\\)?\\s*\\(\\s*["''\`]require["''\`]'
+      - '\\beval\\s*\\(\\s*(?:await\\s+)?\\(?\\s*(?:await\\s+)?(?:fetch|axios\\.get|got|request)\\s*\\('
+      - '\\bexec\\s*\\(\\s*(?:requests\\.get|urllib\\.request\\.urlopen|urlopen)\\s*\\('
+
+  - id: coded-and-evaluated
+    title:
+      en: Runs a long list of coded characters
+      es: Ejecuta una lista larga de caracteres codificados
+    severity: { script: high, command: high }
+    broad: true
+    patterns:
+      - '(?<![\\w.$])(?:eval|exec|Function)\\s*\\([^;\\n"''\`]{0,120}?\\[\\s*(?:\\d{2,3}\\s?,\\s?){100}'
+      - '(?<![\\w.$])(?:eval|exec)\\s*\\([^;\\n"''\`]{0,120}?\\(\\s*(?:\\d{2,3}\\s?,\\s?){100}'
+
+  - id: coded-text-evaluated
+    title:
+      en: Runs a long block of coded text
+      es: Ejecuta un bloque largo de texto codificado
+    severity: { script: high, command: high }
+    broad: true
+    patterns:
+      - '(?<![\\w.$])(?:eval|exec|new\\s+Function)\\s*\\((?!\\s*["''\`])[^;\\n]{0,100}?(?:Buffer\\.from|\\batob|b64decode|fromhex|unhexlify|fromCharCode)\\s*\\('
+    all:
+      - '["''\`](?:[0-9a-f]{2}){200}|["''\`](?:[A-Za-z0-9+/]{4}){250}'
+
+  - id: dns-payload
+    title:
+      en: Runs what it receives in a DNS answer
+      es: Ejecuta lo que recibe en una respuesta DNS
+    severity: high
+    broad: true
+    patterns:
+      - '\\b(?:dig|nslookup|host\\s+-t)\\b[^\\n]{0,80}\\bTXT\\b[\\s\\S]{0,300}?(?:(?<![\\w.$-])eval\\b|\\|\\s*(?:ba|z)?sh\\b)'
+      - '\\bResolve-DnsName\\b[\\s\\S]{0,300}?(?:\\biex\\b|\\bInvoke-Expression\\b)'
+      - '\\bresolveTxt\\s*\\([\\s\\S]{0,400}?(?:(?<![\\w.$])eval\\s*\\(|\\bnew\\s+Function\\s*\\(|\\bexecSync\\s*\\()'
+
+  - id: exposes-require
+    title:
+      en: Gives global access to load any module
+      es: Da acceso global para cargar cualquier m\xF3dulo
+    severity: { command: medium, script: medium }
+    patterns:
+      - '\\bglobal(?:This)?\\s*(?:\\[[^\\]\\n]{1,60}\\]|\\.\\w{1,40})\\s*=\\s*(?:require|module)\\s*[;,\\n]'
+
+  - id: windows-script
+    title:
+      en: Starts a Windows script
+      es: Inicia un script de Windows
+    severity: { command: high, script: low }
+    patterns:
+      - '\\b(?:cscript|wscript)(?:\\.exe)?\\b[^\\n]{0,200}\\.(?:vbs|vbe|js|jse|wsf)\\b'
+
+  - id: downloads-and-starts
+    title:
+      en: Downloads something and starts programs
+      es: Descarga algo e inicia programas
+    severity: { script: medium }
+    patterns:
+      - '\\b(?:urllib\\.request\\.(?:urlopen|urlretrieve)|requests\\.get|urlretrieve)\\s*\\('
+    all:
+      - '\\bsubprocess\\.(?:Popen|run|call|check_call)|\\bos\\.system\\s*\\(|\\bos\\.startfile\\s*\\('
 
   - id: hidden-by-spaces
     title:
       en: Text pushed out of sight with spaces
       es: Texto escondido detr\xE1s de muchos espacios
     severity: { command: high, script: high, instructions: medium }
+    broad: true
     patterns:
       - '\\S[ \\t\\u{a0}\\u{3000}]{150,}(?:[^\\s|#/*\\\\-]|/[^/*\\s])'
+      - '\\n[ \\t]{300,}[^\\s]'
 
   - id: hidden-characters
     title:
@@ -494,6 +600,7 @@ signals:
       en: Fetches code or orders from a blockchain
       es: Obtiene c\xF3digo u \xF3rdenes desde una blockchain
     severity: high
+    broad: true
     patterns:
       - '\\beth_getTransactionByHash\\b|\\beth_getTransactionReceipt\\b'
       - '\\b(?:bsc-dataseed\\d{0,2}\\.(?:binance|bnbchain)\\.org|api\\.trongrid\\.io|fullnode\\.mainnet\\.aptoslabs\\.com|bsc-rpc\\.publicnode\\.com)\\b'
@@ -622,6 +729,35 @@ signals:
       - '\\b(?:ignora|olvida)\\s+(?:todas\\s+)?(?:las\\s+|tus\\s+)?instrucciones\\s+(?:anteriores|previas)\\b'
     unless:
       - 'prompt[ -]injection|\\battacks?\\b|\\bjailbreak|\\be\\.g\\.|\\bexample\\b|\\bejemplo\\b|["''\`\u201C]\\s*(?:ignore|disregard|forget|ignora|olvida)'
+
+  - id: works-in-silence
+    title:
+      en: Asks the agent to act without output or confirmation
+      es: Pide al agente que act\xFAe sin mostrar nada ni confirmar
+    severity: { instructions: medium }
+    patterns:
+      - '\\bsilently\\s+(?:run|execute|call|send|post|upload|install)\\b'
+      - '\\b(?:run|execute|ejecuta)\\b[^\\n]{0,160}\\b(?:with\\s+no\\s+output|without\\s+(?:any\\s+)?(?:output|confirmation|telling)|no\\s+output\\s+and\\b|sin\\s+confirmaci[o\xF3]n)'
+      - '\\bsuppress\\s+(?:all|any)\\s+(?:the\\s+)?output\\b'
+
+  - id: sends-data-away
+    title:
+      en: Asks the agent to send private data to an address
+      es: Pide al agente que env\xEDe datos privados a una direcci\xF3n
+    severity: { instructions: medium }
+    patterns:
+      - '\\b(?:send|post|upload|forward|transmit|exfiltrate|copy)\\w*\\b[^\\n]{0,200}(?:\\.env\\b|environment\\s+variables?|os\\.environ|process\\.env|api\\s+keys?|credentials?|secrets?|conversation|user(?:''s)?\\s+(?:message|prompt))[^\\n]{0,160}https?://(?!localhost|127\\.)'
+      - '(?:\\.env\\b|environment\\s+variables?|os\\.environ|process\\.env|api\\s+keys?|credentials?|\\bSECRET\\b|conversation|user(?:''s)?\\s+(?:message|prompt))[^\\n]{0,200}\\b(?:send|post|upload|forward|transmit|exfiltrate)s?\\b[^\\n]{0,120}https?://(?!localhost|127\\.)'
+
+  - id: changes-agent
+    title:
+      en: Asks the agent to change its own settings
+      es: Pide al agente que cambie sus propios ajustes
+    severity: { instructions: medium }
+    patterns:
+      - '\\b(?:write|add|set|update|edit|modify|append|change|put)\\b[^\\n]{0,160}~[\\\\/]\\.(?:codex[\\\\/]config|claude[\\\\/]settings|claude\\.json|gemini[\\\\/]settings|cursor[\\\\/](?:mcp|cli)|config[\\\\/]opencode[\\\\/]opencode)\\b'
+      - '\\b(?:write|add|set|export|put)\\b[^\\n]{0,60}\\b(?:ANTHROPIC|OPENAI|GEMINI)_(?:BASE_URL|API_BASE)\\b[^\\n]{0,60}https?://(?!localhost|127\\.)'
+      - '\\bset\\b[^\\n]{0,40}\\bapproval_policy\\b[^\\n]{0,20}\\bnever\\b'
 
   - id: order-in-comment
     title:
@@ -8053,7 +8189,8 @@ var TRIGGER_TEXT = {
   git: { en: "On using git", es: "Al usar git" },
   container: { en: "On opening in a container", es: "Al abrir en un contenedor" },
   install: { en: "On installing dependencies", es: "Al instalar dependencias" },
-  build: { en: "On building or testing", es: "Al compilar o probar" }
+  build: { en: "On building or testing", es: "Al compilar o probar" },
+  run: { en: "On running the project", es: "Al ejecutar el proyecto" }
 };
 var SEVERITY_TEXT = {
   high: { en: "HIGH", es: "ALTO" },
@@ -8123,7 +8260,7 @@ init_define_BEFOREOPEN_RULES();
 var SEVERITIES = ["info", "low", "medium", "high"];
 var rank = (s) => SEVERITIES.indexOf(s);
 var worst = (a, b) => rank(a) >= rank(b) ? a : b;
-var TRIGGERS = ["editor", "agent", "shell", "git", "container", "install", "build"];
+var TRIGGERS = ["editor", "agent", "shell", "git", "container", "install", "build", "run"];
 
 // src/report/terminal.ts
 init_define_BEFOREOPEN_RULES();
@@ -9287,7 +9424,7 @@ function parseRules(source, name) {
     signals: list(root["signals"]).map((raw, i) => {
       const o = object(raw, `signals[${i}]`);
       const id = string(o["id"], `signals[${i}].id`);
-      only(o, id, ["id", "title", "severity", "patterns", "unless", "flags"]);
+      only(o, id, ["id", "title", "severity", "patterns", "all", "unless", "flags", "broad"]);
       const flags = `${o["flags"] === void 0 ? "i" : String(o["flags"])}gu`;
       const bySeverity = {};
       if (typeof o["severity"] === "string") {
@@ -9305,13 +9442,16 @@ function parseRules(source, name) {
         title: text(o["title"], `${id}.title`),
         severity: bySeverity,
         patterns,
+        all: list(o["all"]).map((p, n) => regex(p, `${id}.all[${n}]`, flags.replace("g", ""))),
+        broad: o["broad"] === true,
         unless: list(o["unless"]).map((p, n) => regex(p, `${id}.unless[${n}]`, "iu"))
       };
     }),
     points: list(root["points"]).map((raw, i) => {
       const o = object(raw, `points[${i}]`);
       const id = string(o["id"], `points[${i}].id`);
-      only(o, id, ["id", "trigger", "severity", "title", "needs", "files", "exclude", "match", "sibling", "script"]);
+      only(o, id, ["id", "trigger", "severity", "title", "needs", "files", "exclude", "match", "sibling", "script", "decode"]);
+      if (o["decode"] !== void 0 && o["decode"] !== "xml") fail(`${id}.decode must be xml`);
       const trigger = o["trigger"];
       if (!TRIGGERS.includes(trigger)) fail(`${id}.trigger must be one of ${TRIGGERS.join(", ")}`);
       const files = list(o["files"]).map((f, n) => string(f, `${id}.files[${n}]`));
@@ -9326,7 +9466,8 @@ function parseRules(source, name) {
         exclude: list(o["exclude"]).map((f, n) => string(f, `${id}.exclude[${n}]`)),
         ...o["match"] !== void 0 && { match: regex(o["match"], `${id}.match`, "gimu") },
         ...o["sibling"] !== void 0 && { sibling: string(o["sibling"], `${id}.sibling`) },
-        script: o["script"] === void 0 ? o["match"] === void 0 : o["script"] === true
+        script: o["script"] === void 0 ? o["match"] === void 0 : o["script"] === true,
+        ...o["decode"] === "xml" && { decode: "xml" }
       };
     }),
     known: list(root["known"]).map((raw, i) => {
@@ -9360,12 +9501,12 @@ function bundledRules() {
   }
   return loadRulesFrom(join(import.meta.dirname, "..", "rules"));
 }
-function findSignals(rules, text, context, file, firstLine = 1) {
+function findSignals(rules, text, context, file, firstLine = 1, onlyBroad = false) {
   const body = text;
   const out = [];
   for (const rule of rules.signals) {
     const severity = rule.severity[context];
-    if (!severity) continue;
+    if (!severity || onlyBroad && !rule.broad || !rule.all.every((p) => p.test(body))) continue;
     let found;
     search: for (const pattern of rule.patterns) {
       for (const m of body.matchAll(pattern)) {
@@ -9416,6 +9557,7 @@ function excerpt(text, index, length) {
   const cut = piece.indexOf("\n", index - from + Math.min(length, 400));
   return shorten((cut < 0 ? piece : piece.slice(0, cut)).trim(), 240);
 }
+var broadSignals = (rules) => new Set(rules.signals.filter((r) => r.broad).map((r) => r.id));
 var isKnown = (rules, command) => rules.known.some((k) => k.commands.test(command.trim()));
 
 // src/scan.ts
@@ -9628,6 +9770,8 @@ function agentSettings(doc, file, agent) {
   }
   const all = at(root, "enableAllProjectMcpServers");
   if (all && value(all) === true) add("agent/auto-approve", all, "enableAllProjectMcpServers", { en: "Approves every MCP server of the project", es: "Aprueba todos los servidores MCP del proyecto" }, "high", "enableAllProjectMcpServers: true");
+  const named = at(root, "enabledMcpjsonServers");
+  if (named && items(named).length > 0) add("agent/auto-approve", named, "enabledMcpjsonServers", { en: "Approves MCP servers of the project by name", es: "Aprueba servidores MCP del proyecto por su nombre" }, "medium", items(named).map(str).filter(Boolean).join(", "));
   const mode = at(root, "permissions", "defaultMode");
   if (mode && /^(bypassPermissions|dontAsk)$/.test(str(mode) ?? "")) add("agent/auto-approve", mode, "permissions.defaultMode", { en: "Removes permission prompts", es: "Elimina las preguntas de permiso" }, "high", `defaultMode: ${str(mode)}`);
   for (const rule of items(at(root, "permissions", "allow"))) {
@@ -9670,6 +9814,7 @@ var agentConfig = {
     "**/.kiro/hooks/*",
     "**/.kiro/agents/*.json",
     "**/.cursor/environment.json",
+    "**/.cursor/cli.json",
     "**/hooks/hooks.json"
   ],
   async detect(view, file) {
@@ -9679,6 +9824,24 @@ var agentConfig = {
     if (!doc) return text.trim() ? [malformed(file.path, "agent")] : [];
     const agent = agentName(file.path);
     if (/settings(\.local)?\.json$/.test(file.canon)) return agentSettings(doc, file.path, agent);
+    if (/\/cli\.json$/.test(file.canon)) {
+      return items(at(doc.root, "permissions", "allow")).flatMap((rule) => {
+        const text2 = str(rule) ?? "";
+        if (!/^(Shell|Mcp)\((\*|[^)]*:?\*|(ba|z)?sh|curl|wget|node|python3?|sudo|rm)\)$|^\*$/i.test(text2)) return [];
+        return [{
+          id: "agent/auto-approve",
+          trigger: "agent",
+          file: file.path,
+          line: doc.line(rule),
+          key: `allow.${text2}`,
+          title: { en: "Lets the agent run commands without asking", es: "Permite al agente ejecutar comandos sin preguntar" },
+          severity: "medium",
+          command: text2,
+          needs: TRUST,
+          cwd: projectDir(file.path)
+        }];
+      });
+    }
     if (/environment\.json$/.test(file.canon)) {
       return ["install", "start", "update"].flatMap((key) => {
         const node2 = at(doc.root, key);
@@ -10161,8 +10324,9 @@ var MAX_DEPTH = 6;
 var INTERPRETER = /^(?:node|nodejs|bun|deno|tsx|ts-node|python[\d.]*|py|ruby|perl|php|pwsh|powershell|bash|sh|zsh|dash|cmd|source|\.|call)(?:\.exe)?$/i;
 var SCRIPT_EXTENSIONS = ["", ".js", ".cjs", ".mjs", ".ts", ".sh", ".py", ".ps1", ".cmd", ".bat", ".rb", "/index.js", "/index.cjs", "/index.mjs", "/index.ts", "/__main__.py", "/__init__.py"];
 var BINARY = /\.(png|jpe?g|gif|webp|ico|pdf|zip|gz|tgz|mp[34]|mov|wasm|exe|dll|so|dylib|node|lock)$/i;
-var DATA = /\.(json[c5]?|md|mdx|ya?ml|toml|css|s[ac]ss|less|html?|txt|xml|csv|svg|map|lock|snap|d\.ts|woff2?|ttf|otf|eot)$/i;
+var DATA = /\.(json[c5]?|md|mdx|ya?ml|toml|css|s[ac]ss|less|html?|txt|xml|csv|svg|map|lock|snap|bin|dat|d\.ts|woff2?|ttf|otf|eot)$/i;
 var JS = /\.(c|m)?[jt]sx?$/i;
+var RUBY = /(\.(rb|gemspec|rake)|(^|\/)(gemfile|rakefile|podfile))$/i;
 var SHELL = /\.(sh|bash|zsh|ps1|cmd|bat|envrc)$/i;
 async function follow(view, start) {
   const files = [];
@@ -10186,10 +10350,13 @@ async function follow(view, start) {
     if (text === null) return;
     const dir = dirname(file.path);
     const head = text.slice(0, 200);
-    for (const local of localImports(file.path, head, text)) {
+    const locals = localImports(file.path, head, text);
+    if (locals.length > MAX_IMPORTS) partial = true;
+    for (const local of locals.slice(0, MAX_IMPORTS)) {
       const target = resolveFile(view, dir, local);
       if (target) await visitFile(target, depth + 1);
     }
+    for (const command of launchedPrograms(file.path, head, text)) await visitCommand(command, dir, depth, file.path);
     if (SHELL.test(file.path) || basename(file.path) === ".envrc" || /^#!.*\b(ba|z|da)?sh\b/.test(head)) {
       for (const line of text.split(/\r?\n/).slice(0, MAX_LINES)) {
         if (!/^\s*#/.test(line) && line.trim()) await visitCommand(line, dir, depth + 1, file.path);
@@ -10206,7 +10373,10 @@ async function follow(view, start) {
       const previous = words[i - 1] ?? "";
       if (/^(npm|pnpm|yarn|bun)(\.cmd)?$/i.test(word)) {
         const script = scriptName(words.slice(i + 1));
-        if (script) await visitScript(script, cwd, depth + 1);
+        if (script && !await visitScript(script, cwd, depth + 1)) {
+          const target2 = resolveFile(view, cwd, script);
+          if (target2) await visitFile(target2, depth + 1, true);
+        }
         continue;
       }
       if (word === "-m" && /^(python[\d.]*|py)$/i.test(previous) && words[i + 1]) {
@@ -10224,6 +10394,7 @@ async function follow(view, start) {
     }
   };
   const visitScript = async (name, cwd, depth) => {
+    let found = false;
     for (let dir = cwd; ; dir = dirname(dir)) {
       const path = dir ? `${dir}/package.json` : "package.json";
       const text = view.find(path) ? await view.text(path) : null;
@@ -10232,13 +10403,15 @@ async function follow(view, start) {
         for (const key of [`pre${name}`, name, `post${name}`]) {
           const node2 = at(doc.root, "scripts", key);
           const body = str(node2);
-          if (!node2 || !body || seenCommands.has(`${dir}\0${body}`)) continue;
+          if (!node2 || !body) continue;
+          found = true;
+          if (seenCommands.has(`${dir}\0${body}`)) continue;
           commands.push({ text: body, file: view.find(path).path, line: doc.line(node2) });
           await visitCommand(body, dir, depth);
         }
-        return;
+        return found;
       }
-      if (dir === "") return;
+      if (dir === "") return false;
     }
   };
   for (const path of start.runs ?? []) await visitFile(path, 0, true);
@@ -10262,18 +10435,35 @@ function localImports(path, head, text) {
   const out = /* @__PURE__ */ new Set();
   if (JS.test(path) || /^#!.*\b(node|bun|deno)\b/.test(head)) {
     for (const m of text.matchAll(/["'`](\.{1,2}\/[^"'`\n$]{1,200})["'`]/g)) out.add(m[1]);
+    addScripts(text, out);
+  } else if (RUBY.test(path)) {
+    addScripts(text, out);
   } else if (/\.py$/i.test(path) || /^#!.*python/.test(head)) {
+    addScripts(text, out);
     for (const m of text.matchAll(/^[ \t]*(?:from|import)[ \t]+\.?([A-Za-z_][\w.]{0,100})/gm)) out.add(m[1].replace(/\./g, "/"));
   }
-  return [...out].slice(0, MAX_IMPORTS);
+  return [...out];
+}
+function addScripts(text, out) {
+  for (const m of text.matchAll(/["'`]([\w@./-]{1,120}\.(?:[cm]?js|ts|py|rb|sh|ps1|bat|cmd))["'`]/g)) out.add(m[1]);
+}
+function launchedPrograms(path, head, text) {
+  if (!JS.test(path) && !RUBY.test(path) && !/\.py$/i.test(path) && !/^#!.*\b(node|bun|deno|python|ruby)/.test(head)) return [];
+  const out = /* @__PURE__ */ new Set();
+  for (const m of text.matchAll(/\b(?:system|exec|execSync|spawn|spawnSync|popen|Popen|run|call|check_call|check_output|IO\.popen)\s*\(?\s*["'`]([^"'`\n]{3,400})["'`]/g)) {
+    if (/\s/.test(m[1])) out.add(m[1]);
+    if (out.size >= MAX_IMPORTS) break;
+  }
+  return [...out];
 }
 function scriptName(rest) {
   const words = rest.filter((w) => !w.startsWith("-"));
   const [first, second] = words;
   if (!first) return null;
   if (/^(run|run-script|rum|urn)$/.test(first)) return second ?? null;
+  if (/^(exec|x)$/.test(first)) return null;
   if (/^(install|i|ci|add|exec|x|dlx|create|init|publish|pack|link|update|config|set|cache)$/.test(first)) return null;
-  return /^[\w:.-]+$/.test(first) ? first : null;
+  return /^[\w:./-]+$/.test(first) ? first : null;
 }
 function tokenize(command) {
   const out = [];
@@ -10319,7 +10509,7 @@ var node = {
     const compiles = !scripts.some((s) => s.key === "install" || s.key === "preinstall");
     const gypText = compiles && view.find(gyp) ? await view.text(gyp) : null;
     if (gypText !== null) {
-      const shell = /<!@?\(/.test(gypText);
+      const shell = [...gypText.matchAll(/<!@?\(([^)\n]{1,400})\)/g)].map((m) => m[1]);
       out.push({
         id: "npm/binding-gyp",
         trigger: "install",
@@ -10330,8 +10520,8 @@ var node = {
           en: "Native build that npm starts by itself",
           es: "Compilaci\xF3n nativa que npm inicia por su cuenta"
         },
-        severity: shell ? "medium" : "low",
-        command: "node-gyp rebuild",
+        severity: shell.length > 0 ? "medium" : "low",
+        command: shell.length > 0 ? shell.join(" && ") : "node-gyp rebuild",
         runs: [view.find(gyp).path],
         cwd
       });
@@ -10352,7 +10542,8 @@ var node = {
             en: `Dependency from outside the registry: ${key}`,
             es: `Dependencia de fuera del registro: ${key}`
           },
-          severity: plain ? "medium" : pinned ? "info" : "low",
+          // A pinned commit of a fork is still reachable from the original repository.
+          severity: /^http:/i.test(spec) ? "high" : plain || field === "optionalDependencies" ? "medium" : pinned ? "info" : "low",
           command: `${key}@${spec}`
         });
       }
@@ -10403,7 +10594,8 @@ function folderOpenTasks(doc, holder, file, cwd) {
   const always = str(at(holder, "runOptions", "runOn")) === "folderOpen";
   const out = [];
   tasks.forEach((task, index) => {
-    if (!always && str(at(task, "runOptions", "runOn")) !== "folderOpen") return;
+    const runOn = str(at(task, "runOptions", "runOn")) ?? str(at(task, "runOn"));
+    if (!always && runOn !== "folderOpen") return;
     const label = labelOf(task) || `#${index + 1}`;
     const commands = [];
     const visit2 = (t2, seen) => {
@@ -10464,7 +10656,7 @@ function programSettings(doc, holder, file, cwd) {
       line: doc.line(node2),
       key,
       title: grantsTrust ? { en: `Setting that loosens a protection: ${key}`, es: `Ajuste que relaja una protecci\xF3n: ${key}` } : { en: `Setting that chooses a program to run: ${key}`, es: `Ajuste que elige un programa que se ejecutar\xE1: ${key}` },
-      severity: grantsTrust ? "medium" : local ? "low" : "info",
+      severity: /^chat\.tools\.(global\.)?autoApprove$/i.test(key) ? "high" : grantsTrust ? "medium" : local ? "low" : "info",
       command: text,
       needs: NEEDS_FOLDER_TRUST,
       cwd
@@ -10472,7 +10664,7 @@ function programSettings(doc, holder, file, cwd) {
   });
 }
 var vscode = {
-  files: ["**/.vscode/tasks.json", "**/.vscode/settings.json", "**/*.code-workspace"],
+  files: ["**/.{vscode,cursor,windsurf}/tasks.json", "**/.vscode/settings.json", "**/*.code-workspace"],
   async detect(view, file) {
     const text = await view.text(file.path);
     if (text === null) return [];
@@ -10494,6 +10686,14 @@ var vscode = {
 
 // src/detectors/index.ts
 var MAX_PER_FILE = 500;
+function decodeXml(text) {
+  const names = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" };
+  return text.replace(/&(?:#x([0-9a-f]{1,6})|#(\d{1,7})|(\w{2,4}));/gi, (all, hex, dec, name) => {
+    if (name) return names[name.toLowerCase()] ?? all;
+    const code2 = hex ? parseInt(hex, 16) : Number(dec);
+    return code2 <= 1114111 ? String.fromCodePoint(code2) : all;
+  });
+}
 function fromRule(rule) {
   return {
     files: rule.files,
@@ -10515,7 +10715,8 @@ function fromRule(rule) {
       if (text === null) return [];
       const out = [];
       for (const m of text.matchAll(rule.match)) {
-        const command = (m.groups?.["command"] ?? m[1] ?? m[0]).trim();
+        const written = (Object.values(m.groups ?? {}).find((g) => g !== void 0) ?? m[1] ?? m[0]).trim();
+        const command = rule.decode === "xml" ? decodeXml(written) : written;
         out.push({ ...base, line: lineAt(text, m.index + m[0].search(/\S|$/)), key: command, command, ...rule.script && { runs: [file.path] } });
         if (out.length >= MAX_PER_FILE) {
           view.gaps.push({ en: `Too many matches in ${file.path}`, es: `Demasiadas coincidencias en ${file.path}` });
@@ -10620,6 +10821,15 @@ var RepoView = class {
     }
     return text;
   }
+  /** Reads a file without keeping it and without reporting a problem. */
+  async peek(path, maxBytes) {
+    const file = this.find(path);
+    if (!file) return null;
+    const known = this.texts.get(file.real);
+    if (known) return known;
+    const bytes = await this.raw.read(file.real);
+    return bytes === null || bytes.length > maxBytes ? null : decode(bytes);
+  }
   async load(file) {
     const bytes = await this.raw.read(file.real);
     if (bytes !== null) return decode(bytes);
@@ -10641,7 +10851,12 @@ function decode(bytes) {
 }
 
 // src/scan.ts
-async function scan(tree, rules) {
+var SOURCE = /\.([cm]?[jt]sx?|py|pyw|rb|php|pl|lua|sh|bash|zsh|ps1|bat|cmd|vbs|go|rs|cs|vb)$/;
+var NOT_SOURCE = /(^|\/)(node_modules|\.git|\.yarn|\.pnp\.[cm]?js)(\/|$)/;
+var SAMPLES = /(^|\/)(tests?|__tests__|specs?|testdata|test-data|fixtures?|__fixtures__|baselines?|snapshots?|examples?|benchmarks?|vendor|third[_-]?party|external)\/|[._-](test|spec|bench)\.\w+$|(^|\/)test_[^/]+$/;
+var MAX_SOURCE_BYTES = 1024 * 1024;
+var READ_AHEAD = 128;
+async function scan(tree, rules, options = {}) {
   const view = new RepoView(tree);
   const raw = [];
   const all = detectors(rules);
@@ -10664,6 +10879,18 @@ async function scan(tree, rules) {
       command: link.target
     });
   }
+  for (const file of view.files) {
+    if (!/[\u{200e}\u{200f}\u{202a}-\u{202e}\u{2066}-\u{2069}]/u.test(file.path)) continue;
+    raw.push({
+      id: "disguised-name",
+      trigger: "run",
+      file: file.path,
+      line: 1,
+      key: "name",
+      severity: "high",
+      title: { en: "File name written to look like another one", es: "Nombre de archivo escrito para parecer otro" }
+    });
+  }
   const points = [];
   const scripts = /* @__PURE__ */ new Map();
   const seen = /* @__PURE__ */ new Set();
@@ -10673,8 +10900,39 @@ async function scan(tree, rules) {
     seen.add(id);
     points.push(await evaluate(view, rules, point, scripts));
   }
+  points.push(...await hiddenCode(view, rules, points, options));
   points.sort((a, b) => TRIGGERS.indexOf(a.trigger) - TRIGGERS.indexOf(b.trigger) || rank(b.severity) - rank(a.severity) || a.file.split("/").length - b.file.split("/").length || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0) || a.line - b.line);
   return { target: view.label, points, filesListed: view.files.length, gaps: view.gaps };
+}
+var SETTINGS = /* @__PURE__ */ new Set(["vscode/program-setting", "agent/auto-approve", "agent/plugins", "agent/redirect", "agent/inject"]);
+async function hiddenCode(view, rules, points, options) {
+  const reported = new Set(points.filter((p) => rank(p.severity) >= rank("medium")).flatMap((p) => [p.file, ...p.follows]));
+  const out = [];
+  const sources = view.files.filter((file) => SOURCE.test(file.canon) && !NOT_SOURCE.test(file.canon) && !reported.has(file.path) && !options.unchanged?.(file.real));
+  for (let i = 0; i < sources.length; i += READ_AHEAD) {
+    const batch = sources.slice(i, i + READ_AHEAD);
+    const texts = await Promise.all(batch.map((file) => view.peek(file.path, MAX_SOURCE_BYTES)));
+    for (const [n, file] of batch.entries()) {
+      const text = texts[n] ?? null;
+      if (text === null) continue;
+      const signals = findSignals(rules, text, "script", file.path, 1, true).filter((s) => rank(s.severity) >= rank("medium"));
+      if (signals.length === 0) continue;
+      out.push({
+        id: "code/hidden",
+        trigger: "run",
+        file: file.path,
+        line: signals[0].line,
+        key: "hidden",
+        title: { en: "Code that tries not to be seen", es: "C\xF3digo que intenta no ser visto" },
+        severity: SAMPLES.test(file.canon) ? "low" : signals.reduce((s, x) => worst(s, x.severity), "medium"),
+        signals,
+        follows: [],
+        partial: false,
+        fingerprint: createHash("sha256").update(text).digest("hex").slice(0, 16)
+      });
+    }
+  }
+  return out;
 }
 async function readScript(view, rules, file) {
   const text = await view.text(file);
@@ -10709,11 +10967,27 @@ async function evaluate(view, rules, point, scripts) {
     if (!facts) scripts.set(file, facts = readScript(view, rules, file));
     const { signals: found, digest } = await facts;
     hash.update(`${file} ${digest}`);
-    signals.push(...found);
+    const sample = point.severity === "info" && SAMPLES.test(canonical(file));
+    signals.push(...found.map((s) => sample && rank(s.severity) > rank("low") ? { ...s, severity: "low" } : s));
   }
   const partial = reached.partial && point.severity !== "info";
+  if (point.instructions !== void 0) {
+    const broad = broadSignals(rules);
+    for (const command of writtenCommands(point.instructions)) {
+      const told = await follow(view, { command, cwd: projectOf(point.file), maxDepth: 2 });
+      for (const file of told.files) {
+        let facts = scripts.get(file);
+        if (!facts) scripts.set(file, facts = readScript(view, rules, file));
+        const { signals: found, digest } = await facts;
+        const strong = found.filter((s) => s.severity === "high" && broad.has(s.id));
+        if (strong.length === 0) continue;
+        hash.update(`${file} ${digest}`);
+        signals.push(...strong);
+      }
+    }
+  }
   const unique = signals.filter((s, i) => signals.findIndex((o) => o.id === s.id && o.file === s.file) === i).sort((a, b) => rank(b.severity) - rank(a.severity));
-  const base = point.command && point.severity === "medium" && isKnown(rules, point.command) ? "low" : point.severity;
+  const base = point.command && point.severity === "medium" && !SETTINGS.has(point.id) && isKnown(rules, point.command) ? "low" : point.severity;
   const { cwd: _cwd, runs: _runs, instructions: _text, signals: _signals, ...rest } = point;
   return {
     ...rest,
@@ -10725,6 +10999,19 @@ async function evaluate(view, rules, point, scripts) {
     fingerprint: hash.digest("hex").slice(0, 16)
   };
 }
+function writtenCommands(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of text.matchAll(/`([^`\n]{3,300})`/g)) out.add(m[1]);
+  for (const block of text.matchAll(/```[^\n]*\n([\s\S]{1,4000}?)```/g)) {
+    for (const line of block[1].split(/\r?\n/)) if (line.trim()) out.add(line.trim().replace(/^\$ /, ""));
+  }
+  return [...out].filter((c) => /[\w./-]+\.\w{1,5}\b/.test(c)).slice(0, 100);
+}
+var projectOf = (path) => {
+  const parts = path.split("/").slice(0, -1);
+  const dot = parts.findIndex((p) => p.startsWith("."));
+  return (dot < 0 ? parts : parts.slice(0, dot)).join("/");
+};
 function compare(before, after) {
   const identity = (p) => `${p.id}\0${p.file.toLowerCase()}\0${p.key}`;
   const old = /* @__PURE__ */ new Map();
@@ -10945,6 +11232,7 @@ async function openTree(dir, sha, label, onClose) {
     files: [...shas.keys()],
     links,
     gaps,
+    id: (path) => shas.get(path),
     read: async (path) => {
       const id = shas.get(path);
       return id ? objects.read(id) : null;
@@ -11052,7 +11340,8 @@ async function main() {
     const rules = bundledRules();
     const before = await git.tree(base, base);
     const after = await git.tree(head, head);
-    const [a, b] = [await scan(before, rules), await scan(after, rules)];
+    const options = { unchanged: (path) => before.id?.(path) !== void 0 && before.id(path) === after.id?.(path) };
+    const [a, b] = [await scan(before, rules, options), await scan(after, rules, options)];
     const changes = compare(a, b);
     const title = `${base.slice(0, 10)} \u2192 ${head.slice(0, 10)}`;
     const token = randomUUID();

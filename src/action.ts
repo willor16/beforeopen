@@ -45,7 +45,8 @@ async function main(): Promise<void> {
     const rules = bundledRules();
     const before = await git.tree(base, base);
     const after = await git.tree(head, head);
-    const [a, b] = [await scan(before, rules), await scan(after, rules)];
+    const options = { unchanged: (path: string) => before.id?.(path) !== undefined && before.id(path) === after.id?.(path) };
+    const [a, b] = [await scan(before, rules, options), await scan(after, rules, options)];
     const changes = compare(a, b);
     const title = `${base.slice(0, 10)} → ${head.slice(0, 10)}`;
 

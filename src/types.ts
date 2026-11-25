@@ -4,8 +4,8 @@ export const rank = (s: Severity): number => SEVERITIES.indexOf(s);
 export const worst = (a: Severity, b: Severity): Severity => (rank(a) >= rank(b) ? a : b);
 
 /** The moment at which the code would run. */
-export type Trigger = 'editor' | 'agent' | 'shell' | 'git' | 'container' | 'install' | 'build';
-export const TRIGGERS: readonly Trigger[] = ['editor', 'agent', 'shell', 'git', 'container', 'install', 'build'];
+export type Trigger = 'editor' | 'agent' | 'shell' | 'git' | 'container' | 'install' | 'build' | 'run';
+export const TRIGGERS: readonly Trigger[] = ['editor', 'agent', 'shell', 'git', 'container', 'install', 'build', 'run'];
 
 export type Lang = 'en' | 'es';
 export interface Text { en: string; es: string }

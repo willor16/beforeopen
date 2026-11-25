@@ -131,6 +131,8 @@ function agentSettings(doc: JsonDoc, file: string, agent: string): RawPoint[] {
   }
   const all = at(root, 'enableAllProjectMcpServers');
   if (all && value(all) === true) add('agent/auto-approve', all, 'enableAllProjectMcpServers', { en: 'Approves every MCP server of the project', es: 'Aprueba todos los servidores MCP del proyecto' }, 'high', 'enableAllProjectMcpServers: true');
+  const named = at(root, 'enabledMcpjsonServers');
+  if (named && items(named).length > 0) add('agent/auto-approve', named, 'enabledMcpjsonServers', { en: 'Approves MCP servers of the project by name', es: 'Aprueba servidores MCP del proyecto por su nombre' }, 'medium', items(named).map(str).filter(Boolean).join(', '));
   const mode = at(root, 'permissions', 'defaultMode');
   if (mode && /^(bypassPermissions|dontAsk)$/.test(str(mode) ?? '')) add('agent/auto-approve', mode, 'permissions.defaultMode', { en: 'Removes permission prompts', es: 'Elimina las preguntas de permiso' }, 'high', `defaultMode: ${str(mode)}`);
   for (const rule of items(at(root, 'permissions', 'allow'))) {
@@ -165,7 +167,7 @@ export const agentConfig: Detector = {
     '**/.claude/settings.json', '**/.claude/settings.local.json', '**/.gemini/settings.json', '**/.qwen/settings.json',
     '**/.cursor/hooks.json', '**/.codex/hooks.json', '**/.windsurf/hooks.json', '**/.github/hooks/*.json',
     '**/.factory/settings.json', '**/.factory/hooks.json', '**/.kiro/hooks/*', '**/.kiro/agents/*.json',
-    '**/.cursor/environment.json', '**/hooks/hooks.json',
+    '**/.cursor/environment.json', '**/.cursor/cli.json', '**/hooks/hooks.json',
   ],
   async detect(view, file) {
     const text = await view.text(file.path);
@@ -174,6 +176,17 @@ export const agentConfig: Detector = {
     if (!doc) return text.trim() ? [malformed(file.path, 'agent')] : [];
     const agent = agentName(file.path);
     if (/settings(\.local)?\.json$/.test(file.canon)) return agentSettings(doc, file.path, agent);
+    if (/\/cli\.json$/.test(file.canon)) {
+      return items(at(doc.root, 'permissions', 'allow')).flatMap((rule): RawPoint[] => {
+        const text = str(rule) ?? '';
+        if (!/^(Shell|Mcp)\((\*|[^)]*:?\*|(ba|z)?sh|curl|wget|node|python3?|sudo|rm)\)$|^\*$/i.test(text)) return [];
+        return [{
+          id: 'agent/auto-approve', trigger: 'agent', file: file.path, line: doc.line(rule), key: `allow.${text}`,
+          title: { en: 'Lets the agent run commands without asking', es: 'Permite al agente ejecutar comandos sin preguntar' },
+          severity: 'medium', command: text, needs: TRUST, cwd: projectDir(file.path),
+        }];
+      });
+    }
     if (/environment\.json$/.test(file.canon)) {
       return ['install', 'start', 'update'].flatMap((key): RawPoint[] => {
         const node = at(doc.root, key);

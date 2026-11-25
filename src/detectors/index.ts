@@ -12,6 +12,15 @@ import { vscode } from './vscode.ts';
 
 const MAX_PER_FILE = 500;
 
+function decodeXml(text: string): string {
+  const names: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
+  return text.replace(/&(?:#x([0-9a-f]{1,6})|#(\d{1,7})|(\w{2,4}));/gi, (all, hex?: string, dec?: string, name?: string) => {
+    if (name) return names[name.toLowerCase()] ?? all;
+    const code = hex ? parseInt(hex, 16) : Number(dec);
+    return code <= 0x10ffff ? String.fromCodePoint(code) : all;
+  });
+}
+
 function fromRule(rule: PointRule): Detector {
   return {
     files: rule.files,
@@ -28,7 +37,8 @@ function fromRule(rule: PointRule): Detector {
       if (text === null) return [];
       const out: RawPoint[] = [];
       for (const m of text.matchAll(rule.match)) {
-        const command = (m.groups?.['command'] ?? m[1] ?? m[0]).trim();
+        const written = (Object.values(m.groups ?? {}).find((g) => g !== undefined) ?? m[1] ?? m[0]).trim();
+        const command = rule.decode === 'xml' ? decodeXml(written) : written;
         out.push({ ...base, line: lineAt(text, m.index + m[0].search(/\S|$/)), key: command, command, ...(rule.script && { runs: [file.path] }) });
         if (out.length >= MAX_PER_FILE) {
           view.gaps.push({ en: `Too many matches in ${file.path}`, es: `Demasiadas coincidencias en ${file.path}` });

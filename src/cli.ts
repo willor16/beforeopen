@@ -128,7 +128,8 @@ async function main(argv: string[]): Promise<number> {
       const [from, to] = [await git.resolve(base), await git.resolve(head)];
       const before = await git.tree(from, base);
       const after = await git.tree(to, head);
-      const [a, b] = [await scan(before, rules), await scan(after, rules)];
+      const same = { unchanged: (path: string) => before.id?.(path) !== undefined && before.id(path) === after.id?.(path) };
+      const [a, b] = [await scan(before, rules, same), await scan(after, rules, same)];
       const changes = compare(a, b);
       const title = `${base} → ${head}`;
       process.stdout.write(

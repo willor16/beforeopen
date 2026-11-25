@@ -9,6 +9,8 @@ export interface RawTree {
   gaps: Text[];
   /** Returns null when the content cannot be read. */
   read(path: string): Promise<Uint8Array | null>;
+  /** Identity of the content, when it is known without reading it. */
+  id?(path: string): string | undefined;
   close(): Promise<void>;
 }
 
@@ -92,6 +94,16 @@ export class RepoView {
       this.texts.set(file.real, text);
     }
     return text;
+  }
+
+  /** Reads a file without keeping it and without reporting a problem. */
+  async peek(path: string, maxBytes: number): Promise<string | null> {
+    const file = this.find(path);
+    if (!file) return null;
+    const known = this.texts.get(file.real);
+    if (known) return known;
+    const bytes = await this.raw.read(file.real);
+    return bytes === null || bytes.length > maxBytes ? null : decode(bytes);
   }
 
   private async load(file: TreeFile): Promise<string | null> {

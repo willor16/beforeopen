@@ -32,7 +32,9 @@ export function folderOpenTasks(doc: JsonDoc, holder: Node | undefined, file: st
   const always = str(at(holder, 'runOptions', 'runOn')) === 'folderOpen';
   const out: RawPoint[] = [];
   tasks.forEach((task, index) => {
-    if (!always && str(at(task, 'runOptions', 'runOn')) !== 'folderOpen') return;
+    // Some attacks write it in the wrong place, and forks of VS Code may accept it.
+    const runOn = str(at(task, 'runOptions', 'runOn')) ?? str(at(task, 'runOn'));
+    if (!always && runOn !== 'folderOpen') return;
     const label = labelOf(task) || `#${index + 1}`;
     const commands: string[] = [];
     const visit = (t: Node, seen: Set<Node>): void => {
@@ -97,7 +99,7 @@ function programSettings(doc: JsonDoc, holder: Node | undefined, file: string, c
       title: grantsTrust
         ? { en: `Setting that loosens a protection: ${key}`, es: `Ajuste que relaja una protección: ${key}` }
         : { en: `Setting that chooses a program to run: ${key}`, es: `Ajuste que elige un programa que se ejecutará: ${key}` },
-      severity: grantsTrust ? 'medium' : local ? 'low' : 'info',
+      severity: /^chat\.tools\.(global\.)?autoApprove$/i.test(key) ? 'high' : grantsTrust ? 'medium' : local ? 'low' : 'info',
       command: text,
       needs: NEEDS_FOLDER_TRUST,
       cwd,
@@ -106,7 +108,7 @@ function programSettings(doc: JsonDoc, holder: Node | undefined, file: string, c
 }
 
 export const vscode: Detector = {
-  files: ['**/.vscode/tasks.json', '**/.vscode/settings.json', '**/*.code-workspace'],
+  files: ['**/.{vscode,cursor,windsurf}/tasks.json', '**/.vscode/settings.json', '**/*.code-workspace'],
   async detect(view, file) {
     const text = await view.text(file.path);
     if (text === null) return [];

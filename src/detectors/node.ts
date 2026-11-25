@@ -42,7 +42,8 @@ export const node: Detector = {
     const compiles = !scripts.some((s) => s.key === 'install' || s.key === 'preinstall');
     const gypText = compiles && view.find(gyp) ? await view.text(gyp) : null;
     if (gypText !== null) {
-      const shell = /<!@?\(/.test(gypText);
+      // `<!(command)` runs while the project is being configured.
+      const shell = [...gypText.matchAll(/<!@?\(([^)\n]{1,400})\)/g)].map((m) => m[1]!);
       out.push({
         id: 'npm/binding-gyp',
         trigger: 'install',
@@ -53,8 +54,8 @@ export const node: Detector = {
           en: 'Native build that npm starts by itself',
           es: 'Compilación nativa que npm inicia por su cuenta',
         },
-        severity: shell ? 'medium' : 'low',
-        command: 'node-gyp rebuild',
+        severity: shell.length > 0 ? 'medium' : 'low',
+        command: shell.length > 0 ? shell.join(' && ') : 'node-gyp rebuild',
         runs: [view.find(gyp)!.path],
         cwd,
       });
@@ -76,7 +77,8 @@ export const node: Detector = {
             en: `Dependency from outside the registry: ${key}`,
             es: `Dependencia de fuera del registro: ${key}`,
           },
-          severity: plain ? 'medium' : pinned ? 'info' : 'low',
+          // A pinned commit of a fork is still reachable from the original repository.
+          severity: /^http:/i.test(spec) ? 'high' : plain || field === 'optionalDependencies' ? 'medium' : pinned ? 'info' : 'low',
           command: `${key}@${spec}`,
         });
       }
