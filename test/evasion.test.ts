@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { markdown, clean, safeJson } from '../src/sanitize.ts';
+import { annotation, clean, code, prose, safeJson } from '../src/sanitize.ts';
 import { HOST, char, folderOpen, json, points, rules } from './helpers.ts';
 import { findSignals } from '../src/rules.ts';
 
@@ -87,8 +87,12 @@ test('output cannot control the terminal, GitHub or Markdown', () => {
   assert.ok(!clean('::set-output name=x::y').startsWith('::'));
   assert.match(safeJson({ a: nasty }), /^[ -~\n]*$/);
   assert.deepEqual(JSON.parse(safeJson({ a: nasty })), { a: nasty });
-  const md = markdown('<img src=x> [a](https://b.c) @user `x` | **b** www.x.y');
-  assert.ok(!/[<>[\]`|*@]/.test(md) && !md.includes('https:') && !md.includes('www.'));
+  const md = code('<img src=x> [a](https://b.c) @user `x` | **b** www.x.y');
+  assert.match(md, /^<code>[^<>]*<\/code>$/);
+  assert.ok(!/[[\]`|*@]/.test(md) && !md.includes('https:') && !md.includes('www.'));
+  for (const link of ['by @user', 'see #12', 'owner/repo#1', 'GH-7', 'abcdef1234']) assert.match(prose(link), /^<code>/, link);
+  assert.equal(prose('MCP server: demo'), 'MCP server&#58; demo');
+  assert.equal(annotation('npx @scope/x by @user'), 'npx @ scope/x by @ user');
 });
 
 test('a long command keeps its end visible', () => {

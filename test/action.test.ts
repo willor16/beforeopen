@@ -70,6 +70,7 @@ test('pull request with the merge commit: only what the request adds', () => {
   assert.equal(r.output, 'count=1\nhighest=high\n');
   const commands = workflowCommands(r.stdout);
   assert.equal(commands.length, 1, commands.join('\n'));
+  assert.ok(!/@(?! )/.test(commands[0]!), commands[0]);
   assert.match(commands[0]!, /^::error file=\.vscode\/tasks\.json,line=7,title=beforeopen::/);
 });
 
@@ -84,6 +85,9 @@ test('the summary shows repository text literally', () => {
   const { summary } = run({ GITHUB_SHA: merge }, event);
   assert.match(summary, /\| HIGH<br>NEW \|/);
   assert.ok(!summary.includes('<b>') && !summary.includes('@user') && !summary.includes('https:'));
+  // GitHub links mentions even when they are escaped, but never inside <code>.
+  const outside = summary.replace(/<code>[^<]*<\/code>/g, '');
+  assert.ok(summary.includes('&#64;user') && !/&#64;|&#35;/.test(outside), outside);
 });
 
 test('fail-on never, explicit base and Spanish', () => {
