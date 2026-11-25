@@ -1,14 +1,38 @@
 {
   "name": "beforeopen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "See what a repository will run on your machine before you open it.",
-  "keywords": ["security", "supply-chain", "malware", "cli", "vscode", "ai-agents", "mcp", "claude-code", "cursor", "static-analysis"],
+  "keywords": [
+    "security",
+    "supply-chain",
+    "malware",
+    "cli",
+    "vscode",
+    "ai-agents",
+    "mcp",
+    "claude-code",
+    "cursor",
+    "static-analysis"
+  ],
   "license": "MIT",
   "type": "module",
-  "bin": { "beforeopen": "dist/cli.js" },
-  "files": ["dist/cli.js", "README.md", "README.es.md", "LICENSE", "THIRD-PARTY-NOTICES.md"],
-  "engines": { "node": ">=20" },
-  "repository": { "type": "git", "url": "git+https://github.com/willor16/beforeopen.git" },
+  "bin": {
+    "beforeopen": "dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js",
+    "README.md",
+    "README.es.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/willor16/beforeopen.git"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",

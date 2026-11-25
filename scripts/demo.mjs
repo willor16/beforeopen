@@ -26,7 +26,7 @@ for (const [lang, target] of [['en', 'docs/demo.svg'], ['es', 'docs/demo.es.svg'
   const run = spawnSync(process.execPath, ['dist/cli.js', dir, '--lang', lang], { encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '1', NO_COLOR: '' } });
   if (run.status !== 1) throw new Error(run.stderr || 'The demo should find something');
   const lines = run.stdout.replace(dir, 'github.com/acme/take-home-test').trimEnd().split('\n');
-  writeFileSync(target, draw(['\x1b[2m$\x1b[0m npx beforeopen acme/take-home-test', '', ...lines]));
+  writeFileSync(target, draw(['\x1b[2m$\x1b[0m beforeopen acme/take-home-test', '', ...lines]));
 }
 rmSync(dir, { recursive: true, force: true });
 
