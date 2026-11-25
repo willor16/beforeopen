@@ -7,6 +7,7 @@
 <p align="center">
 <a href="https://github.com/willor16/beforeopen"><img src="https://img.shields.io/badge/willor16%2Fbeforeopen-black?style=social&amp;logo=github" alt="repository"></a>
 <a href="https://github.com/willor16/beforeopen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/willor16/beforeopen/ci.yml?branch=main&amp;label=CI" alt="CI"></a>
+<a href="https://www.npmjs.com/package/beforeopen"><img src="https://img.shields.io/npm/v/beforeopen?logo=npm" alt="npm version"></a>
 <img src="https://img.shields.io/badge/runtime%20dependencies-0-brightgreen" alt="no runtime dependencies">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
@@ -32,24 +33,22 @@ Some of the project's best features:
 
 You need [Node.js](https://nodejs.org) 20 or later, and git.
 
-<p>1. Clone the repository</p>
+<p>1. Install the command</p>
 
 ```sh
-git clone https://github.com/willor16/beforeopen.git
-cd beforeopen
+npm install -g beforeopen
 ```
 
-<p>2. Build it</p>
+<p>2. Scan a repository</p>
 
 ```sh
-npm ci --ignore-scripts
-npm run build
+beforeopen owner/repo
 ```
 
-<p>3. Install the command</p>
+Or use it without installing anything. Run it from outside the folder you do not trust, because `npx` reads the settings of the current folder:
 
 ```sh
-npm install -g .
+npx beforeopen owner/repo
 ```
 
 <h2>🚀 Usage:</h2>
