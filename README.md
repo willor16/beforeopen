@@ -117,6 +117,8 @@ Use `pull_request`, never `pull_request_target`.
 
 The full measurement, with its method and its failures, is in [docs/detection.md](docs/detection.md).
 
+**Study:** [what the 1,000 most popular repositories can run on your machine](docs/study-2026-11.md).
+
 <h2>🍰 Contribution Guidelines:</h2>
 
 New rules, false positives and ways to hide from the scanner are welcome, in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

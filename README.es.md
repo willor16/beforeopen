@@ -119,6 +119,8 @@ Usa `pull_request`, nunca `pull_request_target`.
 
 La medición completa, con su método y sus fallos, está en [docs/detection.md](docs/detection.md) (en inglés).
 
+**Estudio:** [qué pueden ejecutar en tu máquina los 1.000 repositorios más populares](docs/estudio-2026-11.md).
+
 <h2>🍰 Cómo contribuir:</h2>
 
 Se agradecen reglas nuevas, falsos positivos y formas de esconderse del analizador, en español o inglés. Mira [CONTRIBUTING.md](CONTRIBUTING.md) y [SECURITY.md](SECURITY.md).
